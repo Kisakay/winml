@@ -299,8 +299,7 @@ for (const [svg, name] of [
 }
 gallery.body.appendChild(sysRow);
 
-// ---- App 4 : Calendar ----
-const picked = w10Desc("No date picked yet.");
+// ---- App 4 : Calendar (lazy build = content driven by its application) ----
 const calendarApp = desktop.createApp({
 	id: "calendar",
 	label: "Calendar",
@@ -309,15 +308,18 @@ const calendarApp = desktop.createApp({
 	titleHTML: `Calendar <span class="w10-credit">component</span>`,
 	width: 360,
 	height: 420,
-});
-const cal = w10Calendar({
-	dark,
-	onPick: (d) => {
-		picked.textContent = `Picked: ${d.toLocaleDateString()}`;
+	build: (body) => {
+		const picked = w10Desc("No date picked yet.");
+		const cal = w10Calendar({
+			dark,
+			onPick: (d) => {
+				picked.textContent = `Picked: ${d.toLocaleDateString()}`;
+			},
+		});
+		body.appendChild(cal.el);
+		body.appendChild(picked);
 	},
 });
-calendarApp.body.appendChild(cal.el);
-calendarApp.body.appendChild(picked);
 
 	startMenu.registerApp({ id: "about", label: "About", iconHTML: WIN10_LOGO, onOpen: () => about.focus() });
 	startMenu.registerApp({ id: "settings", label: "Settings demo", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() });

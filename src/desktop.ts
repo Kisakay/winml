@@ -8,11 +8,12 @@
 //
 // Pure DOM, zero dependencies, framework-agnostic (React, Vue, vanilla...).
 
+import { Win10Application } from "./application.js";
+import { Win10StartMenu } from "./startmenu.js";
 import { Win10Taskbar } from "./taskbar.js";
 import { Win10Window, type Win10Geometry, type Win10Theme, type Win10WindowOptions } from "./window.js";
 
 export const DEFAULT_ACCENT = "#0078d7";
-const BASE_Z = 10000;
 
 export interface DesktopStartOptions {
 	iconHTML: string;
@@ -44,10 +45,14 @@ export interface DesktopAppOptions extends Omit<Win10WindowOptions, "onClose" | 
 	appTitle?: string;
 	/** Icon HTML for the taskbar app button. */
 	appIconHTML?: string;
+	/** Auto-register in a Start menu (driven by the application). */
+	startMenu?: Win10StartMenu;
 	/** "hide" keeps the window for re-show (default), "destroy" removes it. */
 	closeMode?: "hide" | "destroy";
+	/** Build the window content lazily on first launch. */
+	build?: (body: HTMLDivElement, app: Win10Application) => void;
 	/** Called when the app is destroyed (close in destroy mode / desktop.destroy). */
-	onDestroy?: () => void;
+	onDestroy?: (app: Win10Application) => void;
 }
 
 export interface DesktopApp {
@@ -88,10 +93,8 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 	const mount = opts.mount ?? document.body;
 	let theme: Win10Theme = opts.theme ?? "light";
 	let accent = opts.accent ?? DEFAULT_ACCENT;
-	let zTop = BASE_Z;
 	let destroyed = false;
 	const apps = new Map<string, DesktopApp>();
-	const focusCleanups = new Map<string, () => void>();
 
 	const taskbar = new Win10Taskbar(opts.taskbarId ?? "w10-taskbar");
 	if (opts.start) {
@@ -108,18 +111,10 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 	taskbar.mount(mount);
 	taskbar.setAccent(accent);
 
-	const syncApp = (id: string, app: DesktopApp) => {
-		taskbar.setAppState(id, { running: app.isRunning, open: app.isOpen });
-	};
-
-	const focusApp = (id: string) => {
-		const app = apps.get(id);
-		if (!app || destroyed) return;
-		app.window.setZIndex(++zTop);
+	const syncAll = (focusedId?: string) => {
 		for (const [otherId, other] of apps) {
-			if (otherId !== id) syncApp(otherId, other);
+			if (otherId !== focusedId) taskbar.setAppState(otherId, { running: other.isRunning, open: other.isOpen });
 		}
-		syncApp(id, app);
 	};
 
 	const desktop: Win10Desktop = {
@@ -135,89 +130,42 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 			if (destroyed) throw new Error("Desktop is destroyed");
 			desktop.getApp(appOpts.id)?.destroy();
 
-			const win = new Win10Window({
+			// The window is guided by its application (lifecycle, taskbar, menu)
+			const guided = new Win10Application({
 				...appOpts,
 				titleHTML: appOpts.titleHTML,
-				onClose: () => app.close(),
-				onMinimize: () => app.minimize(),
+				taskbar,
+				mount,
+				onFocus: () => syncAll(appOpts.id),
+				onDestroy: (a) => {
+					apps.delete(appOpts.id);
+					appOpts.onDestroy?.(a);
+				},
 			});
-			win.setTheme(theme);
-			win.setAccent(accent);
-			mount.appendChild(win.el);
-
-			taskbar.addApp({
-				id: appOpts.id,
-				iconHTML: appOpts.appIconHTML ?? "",
-				label: appOpts.label,
-				title: appOpts.appTitle ?? appOpts.label,
-				onClick: () => app.toggle(),
-			});
-
-			let running = false;
-			const onPointerDown = () => focusApp(appOpts.id);
-			win.el.addEventListener("pointerdown", onPointerDown);
-			focusCleanups.set(appOpts.id, () => win.el.removeEventListener("pointerdown", onPointerDown));
+			guided.setTheme(theme);
+			guided.setAccent(accent);
 
 			const app: DesktopApp = {
-				id: appOpts.id,
-				window: win,
-				body: win.body,
+				id: guided.id,
+				window: guided.window,
+				body: guided.body,
 				get isOpen() {
-					return win.shown;
+					return guided.isOpen;
 				},
 				get isRunning() {
-					return running;
+					return guided.isRunning;
 				},
-				show: () => {
-					win.show();
-					focusApp(appOpts.id);
-				},
-				hide: () => {
-					win.hide();
-					syncApp(appOpts.id, app);
-				},
-				toggle: () => {
-					if (win.shown) {
-						win.hide();
-						syncApp(appOpts.id, app);
-					} else {
-						win.show();
-						focusApp(appOpts.id);
-					}
-				},
-				focus: () => {
-					if (!win.shown) win.show();
-					focusApp(appOpts.id);
-				},
-				minimize: () => {
-					win.hide();
-					syncApp(appOpts.id, app);
-				},
-				close: () => {
-					if (appOpts.closeMode === "destroy") app.destroy();
-					else {
-						win.hide();
-						syncApp(appOpts.id, app);
-					}
-				},
-				setRunning: (v: boolean) => {
-					running = v;
-					syncApp(appOpts.id, app);
-				},
-				setAppTitle: (title: string) => {
-					taskbar.setAppTitle(appOpts.id, title);
-				},
-				destroy: () => {
-					focusCleanups.get(appOpts.id)?.();
-					focusCleanups.delete(appOpts.id);
-					win.destroy();
-					taskbar.removeApp(appOpts.id);
-					apps.delete(appOpts.id);
-					appOpts.onDestroy?.();
-				},
+				show: () => guided.show(),
+				hide: () => guided.hide(),
+				toggle: () => guided.toggle(),
+				focus: () => guided.focus(),
+				minimize: () => guided.minimize(),
+				close: () => guided.close(),
+				setRunning: (v: boolean) => guided.setRunning(v),
+				setAppTitle: (title: string) => guided.setAppTitle(title),
+				destroy: () => guided.destroy(),
 			};
 			apps.set(appOpts.id, app);
-			syncApp(appOpts.id, app);
 			return app;
 		},
 

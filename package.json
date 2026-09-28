@@ -1,6 +1,6 @@
 {
 	"name": "win10ml",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Framework-agnostic Windows 10 desktop HUD for the web (WinML): draggable windows, taskbar with Start button and pinned apps, menus, controls, calendar, message boxes and markdown. Zero dependencies, pure DOM.",
 	"license": "GPL-3.0-only",
 	"author": {

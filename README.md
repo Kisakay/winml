@@ -65,6 +65,26 @@ Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to ev
 
 App methods: `show`, `hide`, `toggle`, `focus` (show + bring to front), `minimize`, `close`, `setRunning` (accent underline in taskbar), `setAppTitle`, `destroy`, plus `window`, `body`, `isOpen`, `isRunning`.
 
+### Application-driven windows
+
+Every window is guided by a `Win10Application`: single-instance launch, lazy content build, focus/z-order, minimize, close modes, taskbar sync and Start menu registration.
+
+```ts
+import { Win10Application, Win10Taskbar, Win10StartMenu } from "win10ml";
+
+const app = new Win10Application({
+	id: "main",
+	label: "My app",
+	titleHTML: "My app",
+	iconHTML: MY_ICON,
+	taskbar, // auto-created button, synced, toggles the app
+	startMenu, // auto-registered entry
+	build: (body) => body.append(...), // lazy, once — rebuild() to refresh
+	onLaunch: () => console.log("launched"),
+});
+app.launch(); // show + focus + running (no duplicate if already open)
+```
+
 ### À-la-carte classes
 
 - `Win10Window` — standalone window (drag/resize/min/max/close, `addNav`, `applyGeometry`, `setTheme`, `setAccent`, localized `chrome` labels).

@@ -6,6 +6,7 @@ export * from "./icons.js";
 export * from "./window.js";
 export * from "./taskbar.js";
 export * from "./desktop.js";
+export * from "./application.js";
 export * from "./controls.js";
 export * from "./menu.js";
 export * from "./markdown.js";
