@@ -50,6 +50,7 @@
 		"build:dts": "tsc -p tsconfig.json",
 		"build:css": "mkdir -p dist && cp styles/win10-shell.css dist/win10-shell.css",
 		"build:demo": "mkdir -p demo/dist && esbuild demo/main.ts --bundle --minify --format=iife --outfile=demo/dist/demo.js",
+		"build:pages": "npm run build && node ./scripts/build-pages.mjs",
 		"build": "npm run clean && npm run build:js && npm run build:dts && npm run build:css && npm run build:demo",
 		"prepublishOnly": "npm run build",
 		"prepare": "npm run build",
