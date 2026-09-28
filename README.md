@@ -67,8 +67,24 @@ App methods: `show`, `hide`, `toggle`, `focus` (show + bring to front), `minimiz
 
 ### À-la-carte classes
 
-- `Win10Window` — standalone window (drag/resize/min/max/close, `addNav`, `applyGeometry`, `setTheme`, `setAccent`).
+- `Win10Window` — standalone window (drag/resize/min/max/close, `addNav`, `applyGeometry`, `setTheme`, `setAccent`, localized `chrome` labels).
 - `Win10Taskbar` — standalone taskbar (`addStartButton`, `addApp`, `setAppState`, `setStatus`, `startClock`).
+- `Win10StartMenu` — classic Start menu flyout: live search, app list + accent tiles, configurable footer (user/settings/power). Apps register dynamically:
+
+```ts
+import { Win10StartMenu } from "win10ml";
+
+const menu = new Win10StartMenu({
+	searchPlaceholder: "Type here to search",
+	footer: {
+		user: { avatarUrl: "https://github.com/me.png", name: "Me", onClick: openProfile },
+		settings: { onClick: openSettings },
+		power: { onClick: hideAll },
+	},
+});
+menu.registerApp({ id: "main", label: "My app", iconHTML: MY_ICON, onOpen: () => app.focus() });
+startButton.onclick = () => menu.toggle();
+```
 - Controls: `w10Button`, `w10Toggle` (checkbox), `w10Switch` (toggle switch), `w10RadioGroup`, `w10TextRow`, `w10TextareaRow`, `w10ComboRow`, `w10Slider`, `w10Progress` (determinate + indeterminate), `w10ListItem`, `w10Hero`, `w10GroupTitle`, `w10Desc`, `w10Divider`.
 - `w10Calendar` — month grid + nav + today footer + date picking.
 - MessageBox: `showWin10MsgBox`, `confirmWin10` (official system icons, modal, Enter/Escape).

@@ -32,6 +32,7 @@ import {
 	MSGBOX_WARNING,
 	confirmWin10,
 	createDesktop,
+	Win10StartMenu,
 	renderMarkdown,
 	showWin10Menu,
 	showWin10MsgBox,
@@ -55,16 +56,39 @@ import {
 	type DesktopApp,
 } from "../src/index.js";
 
+let startMenu: Win10StartMenu;
+
 const desktop = createDesktop({
 	start: {
 		iconHTML: WIN10_LOGO,
-		title: "About this demo",
-		onClick: () => about.focus(),
+		title: "Start",
+		onClick: () => startMenu.toggle(),
 	},
 	clock: {
 		onClick: () => calendarApp.focus(),
 	},
 	accent: "#0078d7",
+});
+
+startMenu = new Win10StartMenu({
+	searchPlaceholder: "Type here to search",
+	footer: {
+		user: {
+			avatarUrl: "https://github.com/Kisakay.png",
+			name: "Demo user",
+			onClick: () => about.focus(),
+		},
+		settings: { title: "Settings", onClick: () => settingsApp.focus() },
+		power: {
+			title: "Sleep (hide all windows)",
+			onClick: () => {
+				about.minimize();
+				settingsApp.minimize();
+				gallery.minimize();
+				calendarApp.minimize();
+			},
+		},
+	},
 });
 
 // ---- App 1 : About (markdown + links) ----
@@ -295,7 +319,12 @@ const cal = w10Calendar({
 calendarApp.body.appendChild(cal.el);
 calendarApp.body.appendChild(picked);
 
-console.log("[demo] accent API: desktop.setAccent('#e81123'), desktop.setTheme('dark')");
+	startMenu.registerApp({ id: "about", label: "About", iconHTML: WIN10_LOGO, onOpen: () => about.focus() });
+	startMenu.registerApp({ id: "settings", label: "Settings demo", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() });
+	startMenu.registerApp({ id: "components", label: "Components", iconHTML: ICON_SETTINGS, onOpen: () => gallery.focus() });
+	startMenu.registerApp({ id: "calendar", label: "Calendar", iconHTML: ICON_CALENDAR, onOpen: () => calendarApp.focus() });
+
+	console.log("[demo] accent API: desktop.setAccent('#e81123'), desktop.setTheme('dark')");
 
 // ---- Global right-click menu ----
 function openDemoMenu(x: number, y: number): void {
