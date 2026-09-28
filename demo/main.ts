@@ -1,4 +1,4 @@
-// Demo app: proves winml runs anywhere with zero dependencies.
+// Demo app: proves win10ml runs anywhere with zero dependencies.
 // No Tidal, no framework — plain DOM + the published ESM bundle.
 import {
 	ICON_CALENDAR,
@@ -73,19 +73,19 @@ const about = desktop.createApp({
 	label: "About",
 	appTitle: "About this demo",
 	appIconHTML: WIN10_LOGO,
-	titleHTML: `About <span class="w10-credit">winml demo</span>`,
+	titleHTML: `About <span class="w10-credit">win10ml demo</span>`,
 	width: 420,
 	height: 480,
 });
 about.body.appendChild(
 	renderMarkdown(
-		"# winml demo\n\nA full **Windows 10 HUD** running on a blank page — no Tidal, no React, no dependency.\n\n- Drag windows by their titlebar, double-click to maximize\n- Apps live in the taskbar with an **accent underline** while running\n- Right-click anywhere for a Win10 context menu\n\n---\nBuilt with `createDesktop()` from `winml`.",
+		"# win10ml demo\n\nA full **Windows 10 HUD** running on a blank page — no Tidal, no React, no dependency.\n\n- Drag windows by their titlebar, double-click to maximize\n- Apps live in the taskbar with an **accent underline** while running\n- Right-click anywhere for a Win10 context menu\n\n---\nBuilt with `createDesktop()` from `win10ml`.",
 	),
 );
 about.body.appendChild(w10GroupTitle("Links"));
 const links = document.createElement("div");
 links.className = "w10-toolbar";
-links.appendChild(w10Button("npm package", () => window.open("https://www.npmjs.com/package/winml", "_blank")));
+links.appendChild(w10Button("npm package", () => window.open("https://www.npmjs.com/package/win10ml", "_blank")));
 links.appendChild(w10Button("Context menu", (e) => openDemoMenu(e.clientX, e.clientY)));
 about.body.appendChild(links);
 about.setRunning(true);
@@ -305,7 +305,7 @@ function openDemoMenu(x: number, y: number): void {
 		y,
 		dark,
 		build: (menu) => {
-			menu.appendChild(w10MenuHeader("Demo menu", "winml context menu"));
+			menu.appendChild(w10MenuHeader("Demo menu", "win10ml context menu"));
 			menu.appendChild(w10Separator());
 			const openAbout = w10MenuItem("Open About", "focus the About app");
 			openAbout.onclick = () => about.focus();

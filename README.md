@@ -1,16 +1,16 @@
-# winml
+# win10ml
 
 WinML is a custom window manager framework built in HTML5/JS/CSS for mocking the actual Windows 10 window manager.
 
 Framework-agnostic **Windows 10 desktop HUD for the web**: draggable windows, a taskbar with Start button and pinned apps, context menus, Settings-style controls, calendar, message boxes, Markdown and the official icon pack. **Zero dependencies, pure DOM** — works with vanilla JS, React, Vue, or anything else.
 
 ```bash
-npm install winml
+npm install win10ml
 ```
 
 ```ts
-import { createDesktop, WIN10_LOGO, renderMarkdown } from "winml";
-import "winml/style.css";
+import { createDesktop, WIN10_LOGO, renderMarkdown } from "win10ml";
+import "win10ml/style.css";
 
 const desktop = createDesktop({
 	start: { iconHTML: WIN10_LOGO, title: "About", onClick: () => about.focus() },
@@ -82,7 +82,7 @@ Win10 logo, Segoe MDL2 glyphs (back/forward, chevrons, arrows, check/plus/minus,
 ## Stylesheet
 
 ```ts
-import "winml/style.css";
+import "win10ml/style.css";
 ```
 
 Self-contained, every rule scoped to `.w10-*` — no global resets, no element selectors. Accent via `--w10-accent`, dark mode via `.w10-dark`.

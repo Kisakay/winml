@@ -1,6 +1,6 @@
-// winml — Windows 10 desktop HUD for the web.
+// win10ml — Windows 10 desktop HUD for the web.
 // Pure DOM, zero dependencies. Import the stylesheet separately:
-//   import "winml/style.css";
+//   import "win10ml/style.css";
 
 export * from "./icons.js";
 export * from "./window.js";
