@@ -27,6 +27,8 @@ export interface Win10WindowOptions {
 	/** Initial position (otherwise centered). */
 	x?: number | null;
 	y?: number | null;
+	/** Localized chrome labels (minimize / maximize / restore / close / resize). */
+	chrome?: { minimize?: string; maximize?: string; restore?: string; close?: string; resize?: string };
 	onClose?: () => void;
 	onMinimize?: () => void;
 	onGeometry?: (geom: Win10Geometry) => void;
@@ -79,22 +81,23 @@ export class Win10Window {
 		minBtn.type = "button";
 		minBtn.className = "w10-capbtn";
 		minBtn.innerHTML = GLYPH_MIN;
-		minBtn.title = "Minimize";
-		minBtn.setAttribute("aria-label", "Minimize");
+		const chrome = opts.chrome ?? {};
+		minBtn.title = chrome.minimize ?? "Minimize";
+		minBtn.setAttribute("aria-label", chrome.minimize ?? "Minimize");
 		minBtn.onclick = () => opts.onMinimize?.();
 		const maxBtn = document.createElement("button");
 		maxBtn.type = "button";
 		maxBtn.className = "w10-capbtn";
 		maxBtn.innerHTML = GLYPH_MAX;
-		maxBtn.title = "Maximize";
-		maxBtn.setAttribute("aria-label", "Maximize");
+		maxBtn.title = chrome.maximize ?? "Maximize";
+		maxBtn.setAttribute("aria-label", chrome.maximize ?? "Maximize");
 		maxBtn.onclick = () => this.toggleMaximize();
 		const closeBtn = document.createElement("button");
 		closeBtn.type = "button";
 		closeBtn.className = "w10-capbtn w10-capbtn-close";
 		closeBtn.innerHTML = GLYPH_CLOSE;
-		closeBtn.title = "Close";
-		closeBtn.setAttribute("aria-label", "Close");
+		closeBtn.title = chrome.close ?? "Close";
+		closeBtn.setAttribute("aria-label", chrome.close ?? "Close");
 		closeBtn.onclick = () => opts.onClose?.();
 		capBtns.appendChild(minBtn);
 		capBtns.appendChild(maxBtn);
@@ -114,7 +117,7 @@ export class Win10Window {
 		if (opts.resizable ?? true) {
 			const grip = document.createElement("div");
 			grip.className = "w10-resize";
-			grip.title = "Resize";
+			grip.title = this.opts.chrome?.resize ?? "Resize";
 			win.appendChild(grip);
 			this.makeResizable(win, grip);
 		}
@@ -164,8 +167,8 @@ export class Win10Window {
 		this.maximized = !this.maximized;
 		this.el.classList.toggle("w10-win-max", this.maximized);
 		this.maxBtn.innerHTML = this.maximized ? GLYPH_RESTORE : GLYPH_MAX;
-		this.maxBtn.title = this.maximized ? "Restore" : "Maximize";
-		this.maxBtn.setAttribute("aria-label", this.maximized ? "Restore" : "Maximize");
+		this.maxBtn.title = this.maximized ? (this.opts.chrome?.restore ?? "Restore") : (this.opts.chrome?.maximize ?? "Maximize");
+		this.maxBtn.setAttribute("aria-label", this.maximized ? (this.opts.chrome?.restore ?? "Restore") : (this.opts.chrome?.maximize ?? "Maximize"));
 		if (!this.maximized) this.clamp();
 	}
 
