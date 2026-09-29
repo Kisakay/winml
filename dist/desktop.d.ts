@@ -1,4 +1,4 @@
-import { Win10Application } from "./application.js";
+import { Win10Application, type Win10ApplicationOptions } from "./application.js";
 import { Win10StartMenu } from "./startmenu.js";
 import { Win10Taskbar } from "./taskbar.js";
 import { Win10Window, type Win10Geometry, type Win10Theme, type Win10WindowOptions } from "./window.js";
@@ -22,7 +22,7 @@ export interface DesktopOptions {
     /** Set to false to hide the clock. */
     clock?: DesktopClockOptions | false;
 }
-export interface DesktopAppOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id"> {
+export interface DesktopAppOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id">, Pick<Win10ApplicationOptions, "pinned" | "pinnable" | "pinTitle" | "unpinTitle" | "onPinChange"> {
     id: string;
     /** Label shown in the taskbar app button. */
     label: string;
@@ -52,6 +52,8 @@ export interface DesktopApp {
     minimize: () => void;
     close: () => void;
     setRunning: (running: boolean) => void;
+    setPinned: (pinned: boolean) => void;
+    isPinned: () => boolean;
     setAppTitle: (title: string) => void;
     destroy: () => void;
 }

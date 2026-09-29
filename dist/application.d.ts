@@ -1,7 +1,7 @@
 import { Win10StartMenu } from "./startmenu.js";
-import { Win10Taskbar } from "./taskbar.js";
+import { Win10Taskbar, type TaskbarAppOptions } from "./taskbar.js";
 import { Win10Window, type Win10Theme, type Win10WindowOptions } from "./window.js";
-export interface Win10ApplicationOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id"> {
+export interface Win10ApplicationOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id">, Pick<TaskbarAppOptions, "pinned" | "pinnable" | "pinTitle" | "unpinTitle" | "onPinChange"> {
     id: string;
     /** Label for the taskbar button + Start menu entry. */
     label: string;
@@ -48,6 +48,9 @@ export declare class Win10Application {
     minimize(): void;
     close(): void;
     setRunning(running: boolean): void;
+    /** Pin state of the taskbar button (unpinned + idle apps hide). */
+    setPinned(pinned: boolean): void;
+    isPinned(): boolean;
     setTitle(titleHTML: string): void;
     setAppTitle(title: string): void;
     setTheme(theme: Win10Theme): void;

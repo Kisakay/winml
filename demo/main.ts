@@ -25,6 +25,7 @@ import {
 	ICON_WIFI,
 	WIN10_LOGO,
 	DOWNLOAD_ICON,
+	GLOBE_ICON,
 	INFO_ICON,
 	MSGBOX_ERROR,
 	MSGBOX_INFO,
@@ -103,7 +104,7 @@ const about = desktop.createApp({
 });
 about.body.appendChild(
 	renderMarkdown(
-		"# win10ml demo\n\nA full **Windows 10 HUD** running on a blank page — no Tidal, no React, no dependency.\n\n- Drag windows by their titlebar, double-click to maximize\n- Apps live in the taskbar with an **accent underline** while running\n- Right-click anywhere for a Win10 context menu\n\n---\nBuilt with `createDesktop()` from `win10ml`.",
+		"# win10ml demo\n\nA full **Windows 10 HUD** running on a blank page — no Tidal, no React, no dependency.\n\n- Drag windows by their titlebar, double-click to maximize\n- Apps live in the taskbar with an **accent underline** while running\n- **Right-click a taskbar button to pin/unpin it**: pinned apps stay when closed, minimized windows keep their button, unpinned + idle apps hide\n- Right-click anywhere for a Win10 context menu\n\n---\nBuilt with `createDesktop()` from `win10ml`.",
 	),
 );
 about.body.appendChild(w10GroupTitle("Links"));
@@ -298,8 +299,28 @@ for (const [svg, name] of [
 	sysRow.appendChild(cell);
 }
 gallery.body.appendChild(sysRow);
+gallery.body.appendChild(w10GroupTitle("Taskbar pin policy"));
+const pinStatus = w10Desc("");
+const pinBtn = w10Button("", () => {
+	gallery.setPinned(!gallery.isPinned());
+	paintPinPolicy();
+});
+function paintPinPolicy(): void {
+	const pinned = gallery.isPinned();
+	pinStatus.textContent = pinned
+		? "Components is pinned: its button stays even when the window is closed."
+		: "Components is unpinned: close the window and the button hides (reopen it from the Start menu). Right-click its taskbar button to pin it back.";
+	pinBtn.textContent = pinned ? "Unpin Components" : "Pin Components";
+}
+paintPinPolicy();
+gallery.body.appendChild(pinStatus);
+const pinRow = document.createElement("div");
+pinRow.className = "w10-toolbar";
+pinRow.appendChild(pinBtn);
+gallery.body.appendChild(pinRow);
 
 // ---- App 4 : Calendar (lazy build = content driven by its application) ----
+// Starts unpinned: no taskbar button until opened from the Start menu.
 const calendarApp = desktop.createApp({
 	id: "calendar",
 	label: "Calendar",
@@ -308,6 +329,7 @@ const calendarApp = desktop.createApp({
 	titleHTML: `Calendar <span class="w10-credit">component</span>`,
 	width: 360,
 	height: 420,
+	pinned: false,
 	build: (body) => {
 		const picked = w10Desc("No date picked yet.");
 		const cal = w10Calendar({
@@ -321,10 +343,48 @@ const calendarApp = desktop.createApp({
 	},
 });
 
+// ---- App 5 : Navigation (addNav with text glyphs + inline SVG glyphs) ----
+const navApp = desktop.createApp({
+	id: "nav",
+	label: "Navigation",
+	appTitle: "Nav with text + SVG glyphs",
+	appIconHTML: ICON_HOME,
+	titleHTML: `Navigation <span class="w10-credit">addNav</span>`,
+	width: 480,
+	height: 400,
+});
+{
+	type NavSection = "home" | "globe" | "cog";
+	const bodies: Record<NavSection, string> = {
+		home: "Text glyph nav item (like ⬇ ✓ ⚙ ◐).",
+		globe: "Inline SVG glyph (GLOBE_ICON): parsed as markup, tinted with the accent color.",
+		cog: "Another SVG glyph (ICON_SETTINGS, 18px): same slot, same style.",
+	};
+	const paintNavBody = (id: NavSection) => {
+		navApp.body.innerHTML = "";
+		navApp.body.appendChild(w10GroupTitle(id === "home" ? "Home" : id === "globe" ? "Languages" : "Settings"));
+		navApp.body.appendChild(w10Desc(bodies[id]));
+	};
+	const navCtl = navApp.window.addNav(
+		[
+			{ id: "home", label: "Home", glyph: "⌂" },
+			{ id: "globe", label: "Languages", glyph: GLOBE_ICON },
+			{ id: "cog", label: "Settings", glyph: ICON_SETTINGS },
+		] as { id: NavSection; label: string; glyph: string }[],
+		"home",
+		(id) => {
+			navCtl.sync(id);
+			paintNavBody(id);
+		},
+	);
+	paintNavBody("home");
+}
+
 	startMenu.registerApp({ id: "about", label: "About", iconHTML: WIN10_LOGO, onOpen: () => about.focus() });
 	startMenu.registerApp({ id: "settings", label: "Settings demo", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() });
 	startMenu.registerApp({ id: "components", label: "Components", iconHTML: ICON_SETTINGS, onOpen: () => gallery.focus() });
 	startMenu.registerApp({ id: "calendar", label: "Calendar", iconHTML: ICON_CALENDAR, onOpen: () => calendarApp.focus() });
+	startMenu.registerApp({ id: "nav", label: "Navigation", iconHTML: ICON_HOME, onOpen: () => navApp.focus() });
 
 	console.log("[demo] accent API: desktop.setAccent('#e81123'), desktop.setTheme('dark')");
 

@@ -13,13 +13,15 @@
 // Pure DOM, zero dependencies. Works standalone or inside a Win10Desktop.
 
 import { Win10StartMenu } from "./startmenu.js";
-import { Win10Taskbar } from "./taskbar.js";
+import { Win10Taskbar, type TaskbarAppOptions } from "./taskbar.js";
 import { Win10Window, type Win10Theme, type Win10WindowOptions } from "./window.js";
 
 /** Shared z-order counter so standalone apps focus above each other. */
 let zTop = 10000;
 
-export interface Win10ApplicationOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id"> {
+export interface Win10ApplicationOptions
+	extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id">,
+		Pick<TaskbarAppOptions, "pinned" | "pinnable" | "pinTitle" | "unpinTitle" | "onPinChange"> {
 	id: string;
 	/** Label for the taskbar button + Start menu entry. */
 	label: string;
@@ -73,6 +75,12 @@ export class Win10Application {
 				label: opts.label,
 				title: opts.appTitle ?? opts.label,
 				onClick: () => this.toggle(),
+				// Only forward defined values: the taskbar owns the defaults.
+				...(opts.pinned !== undefined ? { pinned: opts.pinned } : {}),
+				...(opts.pinnable !== undefined ? { pinnable: opts.pinnable } : {}),
+				...(opts.pinTitle !== undefined ? { pinTitle: opts.pinTitle } : {}),
+				...(opts.unpinTitle !== undefined ? { unpinTitle: opts.unpinTitle } : {}),
+				...(opts.onPinChange ? { onPinChange: opts.onPinChange } : {}),
 			});
 		}
 		if (opts.startMenu) {
@@ -176,6 +184,15 @@ export class Win10Application {
 		this.sync();
 	}
 
+	/** Pin state of the taskbar button (unpinned + idle apps hide). */
+	setPinned(pinned: boolean): void {
+		this.opts.taskbar?.setPinned(this.id, pinned);
+	}
+
+	isPinned(): boolean {
+		return this.opts.taskbar?.isPinned(this.id) ?? true;
+	}
+
 	setTitle(titleHTML: string): void {
 		this.window.setTitleHTML(titleHTML);
 	}
@@ -208,6 +225,12 @@ export class Win10Application {
 	}
 
 	private sync(): void {
-		this.opts.taskbar?.setAppState(this.id, { running: this.isRunning, open: this.isOpen });
+		// Hidden but alive (minimized or background-running) keeps its button:
+		// only unpinned + idle (closed, no activity) hides, per the taskbar policy.
+		this.opts.taskbar?.setAppState(this.id, {
+			running: this.isRunning,
+			open: this.isOpen,
+			minimized: !this.isOpen && this.isRunning,
+		});
 	}
 }
