@@ -194,7 +194,9 @@ export class Win10Window {
 			btn.dataset.section = item.id;
 			const glyph = document.createElement("span");
 			glyph.className = "w10-navglyph";
-			glyph.textContent = item.glyph;
+			// Text glyph (⬇ ⚙ ◐) or inline SVG HTML (GLOBE_ICON...): parse what looks like markup.
+			if (item.glyph.trimStart().startsWith("<")) glyph.innerHTML = item.glyph;
+			else glyph.textContent = item.glyph;
 			const label = document.createElement("span");
 			label.textContent = item.label;
 			btn.appendChild(glyph);

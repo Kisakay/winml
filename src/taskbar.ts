@@ -1,16 +1,48 @@
 // Windows 10 style taskbar: Start button + wide pinned apps + status + clock.
+// The taskbar owns the Win10 display policy natively: pinned apps stay
+// visible even when closed, minimized windows keep their button (click
+// restores), and unpinned + idle apps are hidden. Right-clicking an app
+// button offers Pin/Unpin (opt out per app with pinnable: false).
 // Pure DOM, zero dependencies.
+
+import { showWin10Menu, w10MenuHeader, w10MenuItem } from "./menu.js";
 
 export interface TaskbarAppState {
 	/** The app is running -> accent underline visible. */
 	running: boolean;
 	/** The window is visible and not minimized -> highlighted background. */
 	open: boolean;
+	/** The window exists but is hidden (minimized) -> button stays, like Win10. */
+	minimized?: boolean;
+}
+
+export interface TaskbarAppOptions {
+	id: string;
+	iconHTML: string;
+	label: string;
+	title?: string;
+	onClick: () => void;
+	/** Pinned apps stay visible even when closed (default true). */
+	pinned?: boolean;
+	/** False disables the built-in right-click Pin/Unpin menu (button always visible). */
+	pinnable?: boolean;
+	/** Right-click menu labels (defaults "Pin to taskbar" / "Unpin from taskbar"). */
+	pinTitle?: string;
+	unpinTitle?: string;
+	/** Called when the user toggles pin in the menu (persist it, then setPinned). */
+	onPinChange?: (id: string, pinned: boolean) => void;
+}
+
+interface TaskbarAppRecord {
+	opts: Required<Pick<TaskbarAppOptions, "pinnable" | "pinned">> & TaskbarAppOptions;
+	btn: HTMLButtonElement;
+	state: TaskbarAppState;
 }
 
 export class Win10Taskbar {
 	readonly el: HTMLDivElement;
 	private apps = new Map<string, HTMLButtonElement>();
+	private records = new Map<string, TaskbarAppRecord>();
 	private statusEl: HTMLSpanElement;
 	private clockEl: HTMLDivElement;
 	private timeEl: HTMLSpanElement;
@@ -63,26 +95,57 @@ export class Win10Taskbar {
 		return btn;
 	}
 
-	/** Real Win10 app: icon + label, wide, with accent bar while running. */
-	addApp(opts: { id: string; iconHTML: string; label: string; title?: string; onClick: () => void }): HTMLButtonElement {
+	/** Real Win10 app: icon + label, wide, with accent bar while running.
+	 * Idempotent: re-adding an existing id refreshes it in place (never duplicates).
+	 * Visibility follows the Win10 policy (see sync): pinned/minimized/running
+	 * apps keep their button, unpinned + idle apps are hidden. */
+	addApp(opts: TaskbarAppOptions): HTMLButtonElement {
+		const existing = this.records.get(opts.id);
+		if (existing) {
+			existing.opts = { ...existing.opts, ...opts };
+			this.paintApp(existing);
+			this.syncApp(opts.id);
+			return existing.btn;
+		}
 		const btn = document.createElement("button");
 		btn.type = "button";
 		btn.className = "w10-app w10-app-wide";
-		btn.title = opts.title ?? opts.label;
-		btn.innerHTML = `<span class="w10-app-icon"></span><span class="w10-app-label"></span>`;
-		(btn.querySelector(".w10-app-icon") as HTMLSpanElement).innerHTML = opts.iconHTML;
-		(btn.querySelector(".w10-app-label") as HTMLSpanElement).textContent = opts.label;
-		btn.onclick = opts.onClick;
+		const rec: TaskbarAppRecord = {
+			opts: { pinnable: true, pinned: true, ...opts },
+			btn,
+			state: { running: false, open: false },
+		};
+		this.paintApp(rec);
+		btn.addEventListener("contextmenu", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.showAppMenu(opts.id, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
+		});
 		// Insert right before the spacer (after existing apps).
 		const spacer = this.el.querySelector('[data-role="spacer"]');
 		this.el.insertBefore(btn, spacer);
 		this.apps.set(opts.id, btn);
+		this.records.set(opts.id, rec);
+		this.syncApp(opts.id);
 		return btn;
 	}
 
 	removeApp(id: string): void {
 		this.apps.get(id)?.remove();
 		this.apps.delete(id);
+		this.records.delete(id);
+	}
+
+	/** Pin state (unpinned + idle apps are hidden by the display policy). Silent: persist via onPinChange. */
+	setPinned(id: string, pinned: boolean): void {
+		const rec = this.records.get(id);
+		if (!rec) return;
+		rec.opts.pinned = pinned;
+		this.syncApp(id);
+	}
+
+	isPinned(id: string): boolean {
+		return this.records.get(id)?.opts.pinned !== false;
 	}
 
 	setStartOpen(open: boolean): void {
@@ -90,10 +153,61 @@ export class Win10Taskbar {
 	}
 
 	setAppState(id: string, state: TaskbarAppState): void {
-		const btn = this.apps.get(id);
-		if (!btn) return;
-		btn.classList.toggle("w10-running", state.running);
-		btn.classList.toggle("w10-open", state.open);
+		const rec = this.records.get(id);
+		if (!rec) return;
+		rec.state = { ...state };
+		this.syncApp(id);
+	}
+
+	/** Win10 display policy: pinned, running, open or minimized -> visible.
+	 * Only an unpinned + idle (closed, no activity) app is hidden. */
+	private syncApp(id: string): void {
+		const rec = this.records.get(id);
+		if (!rec) return;
+		const { running, open } = rec.state;
+		const minimized = rec.state.minimized ?? false;
+		rec.btn.classList.toggle("w10-running", running);
+		rec.btn.classList.toggle("w10-open", open);
+		const pinned = rec.opts.pinnable === false ? true : rec.opts.pinned;
+		rec.btn.style.display = pinned || running || open || minimized ? "" : "none";
+	}
+
+	/** Refresh icon + label + tooltip + click handler in place. */
+	private paintApp(rec: TaskbarAppRecord): void {
+		const { btn, opts } = rec;
+		btn.title = opts.title ?? opts.label;
+		if (!btn.querySelector(".w10-app-icon")) {
+			btn.innerHTML = `<span class="w10-app-icon"></span><span class="w10-app-label"></span>`;
+		}
+		(btn.querySelector(".w10-app-icon") as HTMLSpanElement).innerHTML = opts.iconHTML;
+		(btn.querySelector(".w10-app-label") as HTMLSpanElement).textContent = opts.label;
+		btn.onclick = opts.onClick;
+	}
+
+	/** Right-click on an app button: Pin/Unpin context menu (Win10 style). */
+	private showAppMenu(id: string, x: number, y: number): void {
+		const rec = this.records.get(id);
+		if (!rec || rec.opts.pinnable === false) return;
+		const menuId = `w10-appmenu-${id}`;
+		const pinned = rec.opts.pinned;
+		showWin10Menu({
+			id: menuId,
+			x,
+			y,
+			dark: true,
+			accent: this.accent,
+			build: (menu) => {
+				menu.appendChild(w10MenuHeader(rec.opts.label));
+				const item = w10MenuItem(pinned ? (rec.opts.unpinTitle ?? "Unpin from taskbar") : (rec.opts.pinTitle ?? "Pin to taskbar"));
+				item.onclick = (e) => {
+					e.stopPropagation();
+					document.getElementById(menuId)?.remove();
+					this.setPinned(id, !pinned);
+					rec.opts.onPinChange?.(id, !pinned);
+				};
+				menu.appendChild(item);
+			},
+		});
 	}
 
 	setAppTitle(id: string, title: string): void {
@@ -148,5 +262,6 @@ export class Win10Taskbar {
 		this.stopClock();
 		this.el.remove();
 		this.apps.clear();
+		this.records.clear();
 	}
 }

@@ -88,7 +88,7 @@ app.launch(); // show + focus + running (no duplicate if already open)
 ### À-la-carte classes
 
 - `Win10Window` — standalone window (drag/resize/min/max/close, `addNav`, `applyGeometry`, `setTheme`, `setAccent`, localized `chrome` labels).
-- `Win10Taskbar` — standalone taskbar (`addStartButton`, `addApp`, `setAppState`, `setStatus`, `startClock`).
+- `Win10Taskbar` — standalone taskbar (`addStartButton`, `addApp`, `setAppState`, `setStatus`, `startClock`). Owns the Win10 display policy: pinned apps stay visible when closed, minimized windows keep their button, unpinned + idle apps hide; right-click offers Pin/Unpin (`pinned`, `pinnable`, `pinTitle`/`unpinTitle`, `onPinChange`, `setPinned`/`isPinned`, `minimized` in `setAppState`).
 - `Win10StartMenu` — classic Start menu flyout: live search, app list + accent tiles, configurable footer (user/settings/power). Apps register dynamically:
 
 ```ts
