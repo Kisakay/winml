@@ -2582,7 +2582,7 @@ function buildQxChatBody(body: HTMLDivElement): void {
 					if (!/captcha|quota|challenge|vdf|429|Buffer|ArrayBuffer/i.test(msg)) throw err;
 					setStatus("busy", "Solving security challenge…");
 					await new Promise((r) => setTimeout(r, 30));
-					const proofs = await solveLoginChallenge(apiBase, auth.user);
+					const proofs = await solveLoginChallenge(apiBase, auth.user, (step) => sysMsg(`…${step}`));
 					sysMsg("Challenge solved, retrying login…");
 					const res = await fetch(`${apiBase}/api/auth/login`, {
 						method: "POST",
@@ -2599,7 +2599,7 @@ function buildQxChatBody(body: HTMLDivElement): void {
 					});
 					const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; token?: string };
 					if (!res.ok || data?.ok === false || !data.token) {
-						throw new Error(data?.error || `Auth failed: ${res.status}`);
+						throw new Error(`Retry ${res.status}: ${data?.error || "no token"}`);
 					}
 					token = data.token;
 				}

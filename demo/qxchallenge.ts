@@ -36,10 +36,18 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 /** Fetch + solve a login challenge (VDF ~50ms, PQC ~25ms). */
-export async function solveLoginChallenge(apiBase: string, username: string): Promise<QxLoginProofs> {
+export async function solveLoginChallenge(
+	apiBase: string,
+	username: string,
+	onStep?: (label: string) => void,
+): Promise<QxLoginProofs> {
+	onStep?.("fetching challenge…");
 	const ch = await fetchChallenge(apiBase, username, undefined);
+	onStep?.("solving VDF…");
 	const vdfProof = solveVdf(ch.vdf);
+	onStep?.("computing nullifier…");
 	const nullifier = computeNullifier(ch.quotaToken.ticket, ch.quotaToken.epoch, "login");
+	onStep?.("encapsulating PQC…");
 	// Wire format is FIPS 203 {keyId, ekHex}; the SDK's PqcPublicKey type
 	// still describes the legacy {rhoHex, tHex} shape.
 	const wireKey = ch.pqcKey as unknown as { keyId: string; ekHex: string };
