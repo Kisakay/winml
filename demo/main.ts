@@ -2576,10 +2576,14 @@ function buildQxChatBody(body: HTMLDivElement): void {
 				} catch (err) {
 					// The server answers HTTP 200 + ok:false on missing proofs, so the
 					// SDK's status-gated auto-challenge never fires — solve it here.
-					if (!/captcha|quota|challenge|vdf|429/i.test(err instanceof Error ? err.message : "")) throw err;
+					// Also catch the SDK's own PQC crash (TypeError on Buffer): its
+					// solver expects the legacy key format (see demo/qxchallenge.ts).
+					const msg = err instanceof Error ? err.message : "";
+					if (!/captcha|quota|challenge|vdf|429|Buffer|ArrayBuffer/i.test(msg)) throw err;
 					setStatus("busy", "Solving security challenge…");
 					await new Promise((r) => setTimeout(r, 30));
 					const proofs = await solveLoginChallenge(apiBase, auth.user);
+					sysMsg("Challenge solved, retrying login…");
 					const res = await fetch(`${apiBase}/api/auth/login`, {
 						method: "POST",
 						headers: { "content-type": "application/json" },
