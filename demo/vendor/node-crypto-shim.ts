@@ -130,6 +130,10 @@ export class Buf extends Uint8Array {
 		new DataView(this.buffer, this.byteOffset, this.byteLength).setUint32(offset, value >>> 0, false);
 		return offset + 4;
 	}
+	writeBigUInt64BE(value: bigint, offset: number): number {
+		new DataView(this.buffer, this.byteOffset, this.byteLength).setBigUint64(offset, value, false);
+		return offset + 8;
+	}
 }
 
 class Hash {

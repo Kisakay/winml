@@ -121,6 +121,7 @@ import {
 	type WallpaperOptions,
 } from "../src/index.js";
 import { SelfbotClient, Events } from "qxchat.ts";
+import { solveLoginChallenge } from "./qxchallenge.js";
 
 let startMenu: Win10StartMenu;
 
@@ -2562,13 +2563,42 @@ function buildQxChatBody(body: HTMLDivElement): void {
 		client = null;
 		const wsUrl = serverInput.value.trim() || QX_DEFAULT_SERVER;
 		qxSave(QX_SERVER_KEY, wsUrl);
+		const apiBase = qxApiBase(wsUrl);
 		setStatus("busy", "Logging in…");
 		const c = new SelfbotClient({ wsUrl });
 		subscribe(c);
 		try {
 			if ("token" in auth) await c.login(auth.token);
 			else {
-				const token = await SelfbotClient.fetchToken(auth.user, auth.pass, qxApiBase(wsUrl));
+				let token = "";
+				try {
+					token = await SelfbotClient.fetchToken(auth.user, auth.pass, apiBase);
+				} catch (err) {
+					// The server answers HTTP 200 + ok:false on missing proofs, so the
+					// SDK's status-gated auto-challenge never fires — solve it here.
+					if (!/captcha|quota|challenge|vdf|429/i.test(err instanceof Error ? err.message : "")) throw err;
+					setStatus("busy", "Solving security challenge…");
+					await new Promise((r) => setTimeout(r, 30));
+					const proofs = await solveLoginChallenge(apiBase, auth.user);
+					const res = await fetch(`${apiBase}/api/auth/login`, {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({
+							username: auth.user.trim().toLowerCase(),
+							password: auth.pass,
+							vdfChallenge: proofs.vdfChallenge,
+							vdfProof: proofs.vdfProof,
+							quotaToken: proofs.quotaToken,
+							nullifier: proofs.nullifier,
+							pqcCiphertext: proofs.pqcCiphertext,
+						}),
+					});
+					const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; token?: string };
+					if (!res.ok || data?.ok === false || !data.token) {
+						throw new Error(data?.error || `Auth failed: ${res.status}`);
+					}
+					token = data.token;
+				}
 				tokenInput.value = token;
 				await c.login(token);
 			}
@@ -3170,9 +3200,9 @@ function exCall(name: string, args: ExVal[]): ExVal {
 	}
 }
 
-function exEvaluateFormula(body: string, lookup: (c: number, r: number) => ExVal): ExVal {
+function exEvaluateFormula(body: string, scope: ExScope): ExVal {
 	try {
-		return new ExParser(body, { lookup }).parse();
+		return new ExParser(body, scope).parse();
 	} catch (e) {
 		if (e instanceof ExParseError) return { t: "e", v: EX_ERR_NAME };
 		throw e;
@@ -3477,7 +3507,7 @@ function buildExcelBody(body: HTMLDivElement): void {
 				const cell = cells.get(exKey(c, r));
 				td.classList.remove("w10-sheet-cellnum", "w10-sheet-bold", "w10-sheet-italic");
 				td.style.textAlign = "";
-				if (!cell || cell.raw === "") {
+				if (!cell || (cell.raw === "" && !cell.bold && !cell.italic && !cell.align)) {
 					td.textContent = "";
 					continue;
 				}
@@ -3930,7 +3960,7 @@ const excelApp = desktop.createApp({
 	build: (body) => buildExcelBody(body),
 });
 
-// ---- App 9 : QxChat (chat-only, qxchat.ts in the browser) ----
+// ---- App 10 : QxChat (chat-only, qxchat.ts in the browser) ----
 const qxchatApp = desktop.createApp({
 	id: "qxchat",
 	label: "QxChat",
