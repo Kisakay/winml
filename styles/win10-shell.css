@@ -1772,3 +1772,221 @@ hr.w10-md-hr {
 .w10-win.w10-dark .w10-notepad-bar { border-bottom-color: #2c2c2c; }
 .w10-win.w10-dark .w10-notepad-area { background: #1b1b1b; color: #fff; }
 .w10-win.w10-dark .w10-notepad-status { border-top-color: #2c2c2c; color: #a19f9d; }
+
+/* ================= Paint =================
+   Classic MS Paint workbench: tabbed ribbon, canvas stage, status bar.
+   Mount a `.w10-paint` root inside a `w10-body-flush` window body. */
+.w10-win .w10-paint {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	min-width: 0;
+}
+
+.w10-win .w10-paint-tabs {
+	display: flex;
+	gap: 2px;
+	align-items: flex-end;
+	background: #f5f5f5;
+	border-bottom: 1px solid #d4d4d4;
+	padding: 4px 8px 0;
+	flex-shrink: 0;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.w10-win .w10-ptab {
+	border: 1px solid transparent;
+	border-bottom: none;
+	background: transparent;
+	color: #000;
+	font-family: inherit;
+	font-size: 12px;
+	padding: 4px 16px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.w10-win .w10-ptab:hover { background: #e5f1fb; }
+.w10-win .w10-ptab.w10-on {
+	background: #fff;
+	border-color: #d4d4d4;
+	color: var(--w10-accent, #0078d7);
+	font-weight: 600;
+}
+.w10-win .w10-ptab-file.w10-on { color: #000; }
+
+.w10-win .w10-paint-ribbon {
+	display: flex;
+	align-items: stretch;
+	gap: 0;
+	background: #fff;
+	border-bottom: 1px solid #d4d4d4;
+	padding: 6px 4px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	flex-shrink: 0;
+	min-height: 86px;
+	scrollbar-width: thin;
+}
+
+.w10-win .w10-pgroup {
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	padding: 0 10px;
+	border-right: 1px solid #e1e1e1;
+}
+.w10-win .w10-pgroup:first-child { padding-left: 6px; }
+.w10-win .w10-pgroup:last-child { border-right: none; }
+.w10-win .w10-pgroup-body {
+	display: flex;
+	gap: 3px;
+	align-items: flex-start;
+	flex: 1;
+}
+.w10-win .w10-pgroup-label {
+	font-size: 11px;
+	color: #605e5c;
+	text-align: center;
+	margin-top: 5px;
+	white-space: nowrap;
+}
+.w10-win .w10-pgroup-col { display: flex; flex-direction: column; gap: 2px; }
+
+.w10-win .w10-ptool {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	flex-shrink: 0;
+	gap: 2px;
+	min-width: 46px;
+	max-width: 64px;
+	padding: 4px 5px;
+	background: transparent;
+	border: 1px solid transparent;
+	color: inherit;
+	font-family: inherit;
+	font-size: 10px;
+	line-height: 1.2;
+	text-align: center;
+	cursor: pointer;
+}
+.w10-win .w10-ptool:hover { background: #e5f1fb; border-color: #cce8ff; }
+.w10-win .w10-ptool.w10-on { background: #cce8ff; border-color: #99d1ff; }
+.w10-win .w10-ptool:disabled { opacity: 0.4; cursor: default; }
+.w10-win .w10-ptool:hover:disabled { background: transparent; border-color: transparent; }
+.w10-win .w10-ptool svg { width: 20px; height: 20px; display: block; flex-shrink: 0; }
+.w10-win .w10-ptool-glyph { font-size: 16px; line-height: 20px; font-weight: 700; }
+
+.w10-win .w10-ppalette {
+	display: grid;
+	grid-template-columns: repeat(10, 19px);
+	gap: 2px;
+	align-content: start;
+}
+.w10-win .w10-pswatch {
+	width: 19px;
+	height: 19px;
+	padding: 0;
+	border: 1px solid #767676;
+	cursor: pointer;
+}
+.w10-win .w10-pswatch:hover { outline: 2px solid var(--w10-accent, #0078d7); outline-offset: -1px; }
+.w10-win .w10-pwells { display: flex; gap: 6px; align-items: center; }
+.w10-win .w10-pwell-stack { position: relative; width: 48px; height: 40px; flex-shrink: 0; }
+.w10-win .w10-pwell {
+	position: absolute;
+	width: 30px;
+	height: 30px;
+	border: 1px solid #555;
+	box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.35);
+	cursor: pointer;
+}
+.w10-win .w10-pwell-1 { left: 0; top: 0; z-index: 1; }
+.w10-win .w10-pwell-2 { right: 0; bottom: 0; }
+
+.w10-win .w10-paint-stage {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	background: #e8e8e8;
+	padding: 16px;
+}
+.w10-win .w10-pcanvas {
+	position: relative;
+	width: max-content;
+	background: #fff;
+	box-shadow: 0 0 0 1px #999, 0 2px 8px rgba(0, 0, 0, 0.25);
+	cursor: crosshair;
+	touch-action: none;
+}
+.w10-win .w10-pcanvas canvas { display: block; }
+.w10-win .w10-pcanvas-ov { position: absolute; inset: 0; }
+.w10-win .w10-presize {
+	position: absolute;
+	right: -6px;
+	bottom: -6px;
+	width: 11px;
+	height: 11px;
+	background: #fff;
+	border: 1px solid #555;
+	cursor: nwse-resize;
+	touch-action: none;
+}
+.w10-win .w10-ptext {
+	position: absolute;
+	border: 1px dashed #333;
+	outline: none;
+	resize: none;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.9);
+	color: #000;
+	padding: 0;
+}
+.w10-win .w10-paint-status {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 3px 12px;
+	border-top: 1px solid #d4d4d4;
+	background: #f5f5f5;
+	font-size: 11px;
+	color: #333;
+	flex-shrink: 0;
+	user-select: none;
+	-webkit-user-select: none;
+}
+.w10-win .w10-paint-status .w10-push { margin-left: auto; }
+
+.w10-win.w10-dark .w10-paint-tabs { background: #191919; border-bottom-color: #333; }
+.w10-win.w10-dark .w10-ptab { color: #fff; }
+.w10-win.w10-dark .w10-ptab:hover { background: #2d2d2d; }
+.w10-win.w10-dark .w10-ptab.w10-on { background: #202020; border-color: #333; }
+.w10-win.w10-dark .w10-paint-ribbon { background: #202020; border-bottom-color: #333; }
+.w10-win.w10-dark .w10-pgroup { border-right-color: #333; }
+.w10-win.w10-dark .w10-pgroup-label { color: #a19f9d; }
+.w10-win.w10-dark .w10-ptool:hover { background: #2d2d2d; border-color: #555; }
+.w10-win.w10-dark .w10-ptool.w10-on { background: rgba(0, 120, 215, 0.35); border-color: var(--w10-accent, #0078d7); }
+.w10-win.w10-dark .w10-paint-status { background: #191919; border-top-color: #333; color: #ccc; }
+
+/* ================= Marquee (rubber-band) selection =================
+   The little blue rectangle drawn on empty-desktop drag. Above the
+   desktop icons (9000), below windows (10000), never interactive. */
+.w10-marquee {
+	position: fixed;
+	z-index: 9001;
+	pointer-events: none;
+	border: 1px solid var(--w10-accent, #0078d7);
+	background: rgba(0, 120, 215, 0.18);
+	background: color-mix(in srgb, var(--w10-accent, #0078d7) 16%, transparent);
+}
+
+/* No text selection while a marquee drag is in progress. */
+body.w10-marquee-on,
+body.w10-marquee-on * {
+	user-select: none !important;
+	-webkit-user-select: none !important;
+}

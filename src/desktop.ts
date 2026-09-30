@@ -10,6 +10,7 @@
 
 import { Win10Application, type Win10ApplicationOptions } from "./application.js";
 import { Win10DesktopIcons, type DesktopIconDef } from "./desktopicons.js";
+import { Win10Marquee, type Win10MarqueeOptions } from "./marquee.js";
 import { Win10StartMenu } from "./startmenu.js";
 import { Win10Taskbar } from "./taskbar.js";
 import { Win10Wallpaper, type WallpaperOptions } from "./wallpaper.js";
@@ -41,6 +42,11 @@ export interface DesktopOptions {
 	wallpaper?: WallpaperOptions | false;
 	/** Desktop shortcuts created at startup (see setDesktopIcons). */
 	desktopIcons?: DesktopIconDef[];
+	/**
+	 * Blue marquee selection on empty-desktop drag (default on).
+	 * `false` disables it, otherwise forwards threshold/onDone.
+	 */
+	marquee?: boolean | Pick<Win10MarqueeOptions, "threshold" | "onDone">;
 }
 
 export interface DesktopAppOptions
@@ -86,6 +92,7 @@ export interface Win10Desktop {
 	readonly taskbar: Win10Taskbar;
 	readonly wallpaper: Win10Wallpaper | null;
 	readonly desktopIcons: Win10DesktopIcons;
+	readonly marquee: Win10Marquee | null;
 	readonly theme: Win10Theme;
 	readonly accent: string;
 	createApp: (opts: DesktopAppOptions) => DesktopApp;
@@ -137,6 +144,15 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 	if (wallpaper && opts.wallpaper) wallpaper.set(opts.wallpaper);
 	const desktopIcons = new Win10DesktopIcons({ mount });
 	if (opts.desktopIcons) desktopIcons.setIcons(opts.desktopIcons);
+	const marquee =
+		opts.marquee === false
+			? null
+			: new Win10Marquee({
+					mount,
+					icons: desktopIcons,
+					accent,
+					...(typeof opts.marquee === "object" ? opts.marquee : {}),
+				});
 	taskbar.mount(mount);
 	taskbar.setAccent(accent);
 
@@ -155,6 +171,7 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 		taskbar,
 		wallpaper,
 		desktopIcons,
+		marquee,
 		get theme() {
 			return theme;
 		},
@@ -219,6 +236,7 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 			if (!isValidAccent(a)) return;
 			accent = a;
 			taskbar.setAccent(a);
+			marquee?.setAccent(a);
 			for (const app of apps.values()) app.window.setAccent(a);
 			startMenu?.setAccent(a);
 		},
@@ -265,6 +283,7 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 			if (destroyed) return;
 			destroyed = true;
 			for (const app of [...apps.values()]) app.destroy();
+			marquee?.destroy();
 			desktopIcons.destroy();
 			wallpaper?.destroy();
 			taskbar.destroy();

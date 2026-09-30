@@ -10,6 +10,8 @@
 // pointer-transparent except on the icons themselves, so window dragging and
 // the global context menu keep working around them.
 
+import type { MarqueeRect } from "./marquee.js";
+
 export interface DesktopIconDef {
 	id: string;
 	label: string;
@@ -28,7 +30,7 @@ export class Win10DesktopIcons {
 	private mount: HTMLElement;
 	private buttons = new Map<string, HTMLButtonElement>();
 	private defs = new Map<string, DesktopIconDef>();
-	private selected: string | null = null;
+	private sel = new Set<string>();
 	private onDocPointer: ((e: PointerEvent) => void) | null = null;
 
 	constructor(opts: DesktopIconsOptions = {}) {
@@ -50,7 +52,12 @@ export class Win10DesktopIcons {
 	}
 
 	get selectedId(): string | null {
-		return this.selected;
+		return this.sel.values().next().value ?? null;
+	}
+
+	/** All selected ids (marquee selection), in insertion order. */
+	get selectedIds(): string[] {
+		return [...this.sel];
 	}
 
 	addIcon(def: DesktopIconDef): void {
@@ -69,7 +76,10 @@ export class Win10DesktopIcons {
 		btn.dataset.icon = def.id;
 		btn.setAttribute("role", "listitem");
 		this.paintButton(btn, def);
-		btn.addEventListener("click", () => this.select(def.id));
+		btn.addEventListener("click", (e) => {
+			if (e.ctrlKey || e.metaKey) this.toggle(def.id);
+			else this.select(def.id);
+		});
 		btn.addEventListener("dblclick", () => {
 			this.select(def.id);
 			def.onOpen();
@@ -89,7 +99,7 @@ export class Win10DesktopIcons {
 		this.defs.delete(id);
 		this.buttons.get(id)?.remove();
 		this.buttons.delete(id);
-		if (this.selected === id) this.selected = null;
+		if (this.sel.delete(id)) this.paint();
 	}
 
 	setIcons(defs: DesktopIconDef[]): void {
@@ -101,14 +111,37 @@ export class Win10DesktopIcons {
 		this.defs.clear();
 		for (const btn of this.buttons.values()) btn.remove();
 		this.buttons.clear();
-		this.selected = null;
+		this.sel.clear();
 	}
 
 	select(id: string | null): void {
-		this.selected = id;
-		for (const [key, btn] of this.buttons) {
-			btn.classList.toggle("w10-selected", key === id);
+		this.selectMany(id === null ? [] : [id]);
+	}
+
+	/** Select a set of icons (marquee selection). Unknown ids are ignored. */
+	selectMany(ids: string[]): void {
+		this.sel = new Set(ids.filter((id) => this.buttons.has(id)));
+		this.paint();
+	}
+
+	/** Single toggle (ctrl+click). */
+	toggle(id: string): void {
+		if (!this.buttons.has(id)) return;
+		if (this.sel.has(id)) this.sel.delete(id);
+		else this.sel.add(id);
+		this.paint();
+	}
+
+	/** Ids of icons intersecting a viewport rect (marquee selection). */
+	hitTest(r: MarqueeRect): string[] {
+		const out: string[] = [];
+		for (const [id, btn] of this.buttons) {
+			const b = btn.getBoundingClientRect();
+			if (r.x < b.x + b.width && r.x + r.w > b.x && r.y < b.y + b.height && r.y + r.h > b.y) {
+				out.push(id);
+			}
 		}
+		return out;
 	}
 
 	destroy(): void {
@@ -117,7 +150,13 @@ export class Win10DesktopIcons {
 		this.el.remove();
 		this.buttons.clear();
 		this.defs.clear();
-		this.selected = null;
+		this.sel.clear();
+	}
+
+	private paint(): void {
+		for (const [key, btn] of this.buttons) {
+			btn.classList.toggle("w10-selected", this.sel.has(key));
+		}
 	}
 
 	private paintButton(btn: HTMLButtonElement, def: DesktopIconDef): void {

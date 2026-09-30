@@ -8,6 +8,7 @@ export * from "./window.js";
 export * from "./taskbar.js";
 export * from "./wallpaper.js";
 export * from "./desktopicons.js";
+export * from "./marquee.js";
 export * from "./desktop.js";
 export * from "./application.js";
 export * from "./controls.js";

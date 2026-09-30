@@ -47,8 +47,11 @@ Builds the whole environment: taskbar + window manager + theme broadcast.
 | `taskbarId` | `string`                             | DOM id of the taskbar (default `"w10-taskbar"`)            |
 | `wallpaper` | `WallpaperOptions \| false`          | Initial wallpaper (default hero). `false` = no layer       |
 | `desktopIcons` | `DesktopIconDef[]`                | Desktop shortcuts created at startup                       |
+| `marquee`  | `boolean \| { threshold?, onDone? }` | Blue rubber-band selection on empty drag (default on; `false` disables) |
 
-Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to every window + attached Start menu), `setStatus(html | null)` (taskbar status text), `setStartOpen`, `attachStartMenu(menu)` (sync a standalone Start menu with the shell theme/accent), `setWallpaper(opts)` / `clearWallpaper()`, `setDesktopIcons(icons)` / `addDesktopIcon(icon)` / `removeDesktopIcon(id)` / `clearDesktopIcons()`, `destroy`. Exposes `wallpaper` (`Win10Wallpaper | null`) and `desktopIcons` (`Win10DesktopIcons`).
+Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to every window + attached Start menu, taskbar and marquee), `setStatus(html | null)` (taskbar status text), `setStartOpen`, `attachStartMenu(menu)` (sync a standalone Start menu with the shell theme/accent), `setWallpaper(opts)` / `clearWallpaper()`, `setDesktopIcons(icons)` / `addDesktopIcon(icon)` / `removeDesktopIcon(id)` / `clearDesktopIcons()`, `destroy`. Exposes `wallpaper` (`Win10Wallpaper | null`), `desktopIcons` (`Win10DesktopIcons`) and `marquee` (`Win10Marquee | null`).
+
+Drag the empty desktop to draw the Win10 selection rectangle: intersecting shortcuts are selected (`desktopIcons.selectedIds`), `ctrl`+drag adds to the current selection, `ctrl`+click toggles one icon, `Escape` cancels. Standalone use: `new Win10Marquee({ mount, icons, accent, onDone })`.
 
 ### `desktop.createApp(opts): DesktopApp`
 

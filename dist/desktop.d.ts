@@ -1,5 +1,6 @@
 import { Win10Application, type Win10ApplicationOptions } from "./application.js";
 import { Win10DesktopIcons, type DesktopIconDef } from "./desktopicons.js";
+import { Win10Marquee, type Win10MarqueeOptions } from "./marquee.js";
 import { Win10StartMenu } from "./startmenu.js";
 import { Win10Taskbar } from "./taskbar.js";
 import { Win10Wallpaper, type WallpaperOptions } from "./wallpaper.js";
@@ -27,6 +28,11 @@ export interface DesktopOptions {
     wallpaper?: WallpaperOptions | false;
     /** Desktop shortcuts created at startup (see setDesktopIcons). */
     desktopIcons?: DesktopIconDef[];
+    /**
+     * Blue marquee selection on empty-desktop drag (default on).
+     * `false` disables it, otherwise forwards threshold/onDone.
+     */
+    marquee?: boolean | Pick<Win10MarqueeOptions, "threshold" | "onDone">;
 }
 export interface DesktopAppOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id">, Pick<Win10ApplicationOptions, "pinned" | "pinnable" | "pinTitle" | "unpinTitle" | "onPinChange"> {
     id: string;
@@ -67,6 +73,7 @@ export interface Win10Desktop {
     readonly taskbar: Win10Taskbar;
     readonly wallpaper: Win10Wallpaper | null;
     readonly desktopIcons: Win10DesktopIcons;
+    readonly marquee: Win10Marquee | null;
     readonly theme: Win10Theme;
     readonly accent: string;
     createApp: (opts: DesktopAppOptions) => DesktopApp;
