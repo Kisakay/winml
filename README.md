@@ -31,6 +31,10 @@ about.show();
 Run the local demo: `npm run build && npm run demo` (http://localhost:8080).
 Work on the demo with live rebuild: `npm run dev` (or `bun run dev`, same URL, esbuild watch + serve, no cache).
 
+The demo ships Win10-style apps: About, Settings (theme/accent/wallpaper), Components gallery, Calendar, Navigation, Widgets, Notepad (`notepad.exe`, local autosave), Paint (`paint.exe`: ribbon, shapes, E2EE-free local canvas), Excel, and **QxChat** — a chat-only client with `qxchat.ts` running natively in the browser (E2EE via WebCrypto, native WebSocket transport). Open QxChat, paste a session token (or login), join a room token, chat.
+
+`qxchat.ts` ships TS sources with path aliases plus `node:crypto` (anti-abuse challenge code). The demo bundle resolves them via esbuild `--alias` (see `build:demo` in `package.json` and `scripts/dev.mjs`): `@errors`/`@types` map into the package, `node:crypto` maps to `demo/vendor/node-crypto-shim.ts` (sync SHA-256 + minimal Buffer, verified byte-identical to Node for the used surface). `demo/vendor/bun-globals.d.ts` keeps `tsc` quiet about the SDK's `typeof Bun` guards.
+
 ## API
 
 ### `createDesktop(opts): Win10Desktop`

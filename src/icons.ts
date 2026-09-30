@@ -229,6 +229,7 @@ export const ICON_ETHERNET = MDL2(`<path d="M6.5 13.5L10 16l3.5-2.5M10 16v-6" st
 export const ICON_PRINTER_ALT = MDL2(`<rect x="6" y="2.5" width="8" height="5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="7" width="14" height="7" stroke="currentColor" stroke-width="1.6"/><rect x="6" y="11" width="8" height="5.5" stroke="currentColor" stroke-width="1.4"/>`);
 export const ICON_FAVORITE = MDL2(`<path d="M10 3.2l2 4.8 5.2.2-4 3.2 1.3 5.1-4.5-2.9-4.5 2.9 1.3-5.1-4-3.2L8 8z" fill="currentColor" stroke="none"/>`);
 export const ICON_DOCUMENT = MDL2(`<path d="M5.5 2.8h5.5l4 4v10.4H5.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.5 10h5M7.5 12.5h5M7.5 15h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/>`);
+export const ICON_SHEET = MDL2(`<rect x="3.5" y="4" width="13" height="12.5" stroke="currentColor" stroke-width="1.6"/><rect x="3.5" y="4" width="13" height="3.6" fill="currentColor" stroke="none"/><path d="M3.5 11.5h13M8 7.6v8.9M12 7.6v8.9" stroke="currentColor" stroke-width="1.3"/>`);
 
 /**
  * Named registry of every icon in the pack (old + extended + system set).
@@ -245,7 +246,7 @@ export const ICONS = {
 	volume: ICON_VOLUME, mute: ICON_MUTE, music: ICON_MUSIC, video: ICON_VIDEO, photo: ICON_PHOTO, camera: ICON_CAMERA, mic: ICON_MIC,
 	search: ICON_SEARCH, refresh: ICON_REFRESH, save: ICON_SAVE, trash: ICON_TRASH, edit: ICON_EDIT,
 	folder: ICON_FOLDER, folderOpen: ICON_FOLDER_OPEN, newFolder: ICON_NEW_FOLDER,
-	file: ICON_FILE, fileAdd: ICON_FILE_ADD, document: ICON_DOCUMENT,
+	file: ICON_FILE, fileAdd: ICON_FILE_ADD, document: ICON_DOCUMENT, sheet: ICON_SHEET,
 	home: ICON_HOME, star: ICON_STAR, favorite: ICON_FAVORITE, heart: ICON_HEART,
 	like: ICON_LIKE, dislike: ICON_DISLIKE, comment: ICON_COMMENT,
 	user: ICON_USER, contact: ICON_CONTACT, group: ICON_GROUP,

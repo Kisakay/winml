@@ -1958,8 +1958,26 @@ hr.w10-md-hr {
 	flex-shrink: 0;
 	user-select: none;
 	-webkit-user-select: none;
+	overflow: hidden;
+	white-space: nowrap;
 }
 .w10-win .w10-paint-status .w10-push { margin-left: auto; }
+
+/* Quick-access undo/redo in the tab bar. */
+.w10-win .w10-pqat {
+	border: 1px solid transparent;
+	background: transparent;
+	color: inherit;
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1;
+	padding: 3px 8px;
+	cursor: pointer;
+	flex-shrink: 0;
+	align-self: center;
+}
+.w10-win .w10-pqat:hover:not(:disabled) { background: #e5f1fb; border-color: #cce8ff; }
+.w10-win .w10-pqat:disabled { opacity: 0.35; cursor: default; }
 
 .w10-win.w10-dark .w10-paint-tabs { background: #191919; border-bottom-color: #333; }
 .w10-win.w10-dark .w10-ptab { color: #fff; }
@@ -1971,6 +1989,133 @@ hr.w10-md-hr {
 .w10-win.w10-dark .w10-ptool:hover { background: #2d2d2d; border-color: #555; }
 .w10-win.w10-dark .w10-ptool.w10-on { background: rgba(0, 120, 215, 0.35); border-color: var(--w10-accent, #0078d7); }
 .w10-win.w10-dark .w10-paint-status { background: #191919; border-top-color: #333; color: #ccc; }
+
+/* ================= Chat =================
+   Simple chat workbench: status pill, message list, composer row.
+   Mount a `.w10-chat` root inside a `w10-body-flush` window body. */
+.w10-win .w10-chat {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	min-width: 0;
+}
+
+.w10-win .w10-chat-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid #e1e1e1;
+	font-size: 12px;
+	flex-shrink: 0;
+	flex-wrap: wrap;
+}
+
+.w10-win .w10-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 999px;
+	background: #767676;
+	flex-shrink: 0;
+}
+.w10-win .w10-dot.w10-on { background: #107c10; }
+.w10-win .w10-dot.w10-busy { background: var(--w10-accent, #0078d7); }
+
+.w10-win .w10-chat-form {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	overflow-y: auto;
+}
+
+.w10-win .w10-chat-log {
+	flex: 1;
+	min-height: 120px;
+	overflow-y: auto;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	background: #f9f9f9;
+}
+
+.w10-win .w10-chat-empty {
+	margin: auto;
+	font-size: 12px;
+	color: #605e5c;
+	text-align: center;
+}
+
+.w10-win .w10-chat-row {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	max-width: 85%;
+}
+
+.w10-win .w10-chat-row.w10-mine { align-self: flex-end; align-items: flex-end; }
+.w10-win .w10-chat-row:not(.w10-mine) { align-self: flex-start; align-items: flex-start; }
+
+.w10-win .w10-chat-meta {
+	font-size: 10px;
+	color: #605e5c;
+	display: flex;
+	gap: 6px;
+}
+
+.w10-win .w10-chat-bubble {
+	font-size: 12px;
+	line-height: 1.45;
+	padding: 6px 10px;
+	background: #fff;
+	border: 1px solid #e1e1e1;
+	word-break: break-word;
+	white-space: pre-wrap;
+}
+
+.w10-win .w10-chat-row.w10-mine .w10-chat-bubble {
+	background: #e5f1fb;
+	border-color: #cce8ff;
+}
+
+.w10-win .w10-chat-row.w10-sys { align-self: center; }
+.w10-win .w10-chat-row.w10-sys .w10-chat-bubble {
+	background: transparent;
+	border: none;
+	color: #605e5c;
+	font-size: 11px;
+	font-style: italic;
+}
+
+.w10-win .w10-chat-typing {
+	font-size: 11px;
+	color: #605e5c;
+	font-style: italic;
+	padding: 2px 12px;
+	min-height: 18px;
+	flex-shrink: 0;
+}
+
+.w10-win .w10-chat-compose {
+	display: flex;
+	gap: 8px;
+	padding: 8px 12px;
+	border-top: 1px solid #e1e1e1;
+	flex-shrink: 0;
+}
+
+.w10-win .w10-chat-compose .w10-textbox { flex: 1; min-width: 0; }
+
+.w10-win.w10-dark .w10-chat-status { border-bottom-color: #2c2c2c; }
+.w10-win.w10-dark .w10-chat-log { background: #191919; }
+.w10-win.w10-dark .w10-chat-empty { color: #a19f9d; }
+.w10-win.w10-dark .w10-chat-meta { color: #a19f9d; }
+.w10-win.w10-dark .w10-chat-bubble { background: #2d2d2d; border-color: #444; }
+.w10-win.w10-dark .w10-chat-row.w10-mine .w10-chat-bubble { background: rgba(0, 120, 215, 0.3); border-color: var(--w10-accent, #0078d7); }
+.w10-win.w10-dark .w10-chat-row.w10-sys .w10-chat-bubble { background: transparent; border: none; color: #a19f9d; }
+.w10-win.w10-dark .w10-chat-compose { border-top-color: #2c2c2c; }
 
 /* ================= Marquee (rubber-band) selection =================
    The little blue rectangle drawn on empty-desktop drag. Above the
@@ -1989,4 +2134,298 @@ body.w10-marquee-on,
 body.w10-marquee-on * {
 	user-select: none !important;
 	-webkit-user-select: none !important;
+}
+
+/* ================= Spreadsheet (excel.exe) =================
+   Mount a `.w10-sheet` root inside a `w10-body-flush` window body. */
+.w10-win .w10-sheet {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.w10-win .w10-sheet-bar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 8px;
+	border-bottom: 1px solid #e1e1e1;
+	flex-shrink: 0;
+	flex-wrap: wrap;
+}
+
+.w10-win .w10-sheet-tool {
+	min-width: 30px;
+	padding: 3px 8px;
+	font-family: inherit;
+	font-size: 12px;
+	color: #000;
+	background: transparent;
+	border: 1px solid transparent;
+	cursor: pointer;
+}
+
+.w10-win .w10-sheet-tool:hover {
+	background: #e5f1fb;
+	border-color: #cce8ff;
+}
+
+.w10-win .w10-sheet-tool.w10-on {
+	background: #cce4f7;
+	border-color: var(--w10-accent, #0078d7);
+}
+
+.w10-win .w10-sheet-sep {
+	width: 1px;
+	height: 20px;
+	background: #e1e1e1;
+	margin: 0 4px;
+	flex-shrink: 0;
+}
+
+.w10-win .w10-sheet-formula {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	border-bottom: 1px solid #e1e1e1;
+	flex-shrink: 0;
+}
+
+.w10-win .w10-sheet-name {
+	width: 64px;
+	flex-shrink: 0;
+	font-family: inherit;
+	font-size: 12px;
+	color: #000;
+	background: #fff;
+	border: 1px solid #767676;
+	padding: 3px 6px;
+}
+
+.w10-win .w10-sheet-fx {
+	font-style: italic;
+	font-family: Georgia, serif;
+	color: #605e5c;
+	flex-shrink: 0;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.w10-win .w10-sheet-fxinput {
+	flex: 1;
+	min-width: 0;
+	font-family: inherit;
+	font-size: 12px;
+	color: #000;
+	background: #fff;
+	border: 1px solid #767676;
+	padding: 3px 6px;
+}
+
+.w10-win .w10-sheet-name:focus,
+.w10-win .w10-sheet-fxinput:focus {
+	outline: none;
+	border: 2px solid var(--w10-accent, #0078d7);
+	padding: 2px 5px;
+}
+
+.w10-win .w10-sheet-gridwrap {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	background: #fff;
+}
+
+.w10-win .w10-sheet-gridwrap:focus {
+	outline: none;
+}
+
+.w10-win table.w10-sheet-table {
+	border-spacing: 0;
+	table-layout: fixed;
+	width: max-content;
+	font-size: 12px;
+}
+
+.w10-win .w10-sheet-corner,
+.w10-win .w10-sheet-colhead,
+.w10-win .w10-sheet-rowhead {
+	background: #f3f3f3;
+	color: #444;
+	font-size: 11px;
+	font-weight: 400;
+	text-align: center;
+	border-right: 1px solid #c8c8c8;
+	border-bottom: 1px solid #c8c8c8;
+	padding: 3px 0;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.w10-win .w10-sheet-corner {
+	position: sticky;
+	top: 0;
+	left: 0;
+	z-index: 4;
+	min-width: 44px;
+}
+
+.w10-win .w10-sheet-colhead {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	overflow: visible;
+}
+
+.w10-win .w10-sheet-rowhead {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+}
+
+.w10-win .w10-sheet-colhead,
+.w10-win .w10-sheet-rowhead {
+	cursor: default;
+}
+
+.w10-win th.w10-sheet-hl {
+	background: #d6e9f8;
+	color: #000;
+	font-weight: 600;
+}
+
+.w10-win .w10-sheet-resize {
+	position: absolute;
+	top: 0;
+	right: -3px;
+	width: 6px;
+	height: 100%;
+	cursor: col-resize;
+	z-index: 5;
+}
+
+.w10-win .w10-sheet-cell {
+	border-right: 1px solid #d4d4d4;
+	border-bottom: 1px solid #d4d4d4;
+	padding: 0 6px;
+	height: 24px;
+	line-height: 23px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: #000;
+	background: #fff;
+	cursor: cell;
+}
+
+.w10-win .w10-sheet-cellnum {
+	text-align: right;
+}
+
+.w10-win .w10-sheet-range {
+	background: rgba(0, 120, 215, 0.12);
+	background: color-mix(in srgb, var(--w10-accent, #0078d7) 12%, transparent);
+}
+
+.w10-win .w10-sheet-active {
+	outline: 2px solid var(--w10-accent, #0078d7);
+	outline-offset: -2px;
+}
+
+.w10-win .w10-sheet-bold {
+	font-weight: 700;
+}
+
+.w10-win .w10-sheet-italic {
+	font-style: italic;
+}
+
+.w10-win .w10-sheet-edit {
+	position: absolute;
+	z-index: 6;
+	font-family: inherit;
+	font-size: 12px;
+	color: #000;
+	background: #fff;
+	border: 2px solid var(--w10-accent, #0078d7);
+	padding: 0 4px;
+	margin: 0;
+	outline: none;
+	box-sizing: border-box;
+}
+
+.w10-win .w10-sheet-status {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 3px 10px;
+	border-top: 1px solid #e1e1e1;
+	font-size: 11px;
+	color: #605e5c;
+	flex-shrink: 0;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.w10-win.w10-dark .w10-sheet-bar,
+.w10-win.w10-dark .w10-sheet-formula {
+	border-bottom-color: #2c2c2c;
+}
+
+.w10-win.w10-dark .w10-sheet-tool {
+	color: #fff;
+}
+
+.w10-win.w10-dark .w10-sheet-tool:hover {
+	background: #3a3a3a;
+	border-color: #555;
+}
+
+.w10-win.w10-dark .w10-sheet-sep {
+	background: #333;
+}
+
+.w10-win.w10-dark .w10-sheet-name,
+.w10-win.w10-dark .w10-sheet-fxinput,
+.w10-win.w10-dark .w10-sheet-edit {
+	color: #fff;
+	background: #2b2b2b;
+	border-color: #8a8a8a;
+}
+
+.w10-win.w10-dark .w10-sheet-fx {
+	color: #a19f9d;
+}
+
+.w10-win.w10-dark .w10-sheet-gridwrap {
+	background: #1b1b1b;
+}
+
+.w10-win.w10-dark .w10-sheet-corner,
+.w10-win.w10-dark .w10-sheet-colhead,
+.w10-win.w10-dark .w10-sheet-rowhead {
+	background: #2d2d2d;
+	color: #ccc;
+	border-right-color: #444;
+	border-bottom-color: #444;
+}
+
+.w10-win.w10-dark th.w10-sheet-hl {
+	background: #3a3a3a;
+	color: #fff;
+}
+
+.w10-win.w10-dark .w10-sheet-cell {
+	color: #fff;
+	background: #1b1b1b;
+	border-right-color: #333;
+	border-bottom-color: #333;
+}
+
+.w10-win.w10-dark .w10-sheet-status {
+	border-top-color: #2c2c2c;
+	color: #a19f9d;
 }

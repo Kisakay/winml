@@ -164,6 +164,7 @@ export declare const ICON_ETHERNET: string;
 export declare const ICON_PRINTER_ALT: string;
 export declare const ICON_FAVORITE: string;
 export declare const ICON_DOCUMENT: string;
+export declare const ICON_SHEET: string;
 /**
  * Named registry of every icon in the pack (old + extended + system set).
  * Use with {@link getWin10Icon} / {@link w10Icon} for dynamic lookup
@@ -238,6 +239,7 @@ export declare const ICONS: {
     readonly file: string;
     readonly fileAdd: string;
     readonly document: string;
+    readonly sheet: string;
     readonly home: string;
     readonly star: string;
     readonly favorite: string;

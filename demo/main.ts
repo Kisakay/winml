@@ -9,6 +9,7 @@ import {
 	ICON_CHECK,
 	ICON_CLOCK,
 	ICON_CODE,
+	ICON_COMMENT,
 	ICON_COPY,
 	ICON_CUT,
 	ICON_EDIT,
@@ -47,6 +48,7 @@ import {
 	ICON_SEND,
 	ICON_SETTINGS,
 	ICON_SHARE,
+	ICON_SHEET,
 	ICON_SHIELD,
 	ICON_SHUFFLE,
 	ICON_STAR,
@@ -118,6 +120,7 @@ import {
 	type WallpaperFit,
 	type WallpaperOptions,
 } from "../src/index.js";
+import { SelfbotClient, Events } from "qxchat.ts";
 
 let startMenu: Win10StartMenu;
 
@@ -156,6 +159,7 @@ startMenu = new Win10StartMenu({
 				calendarApp.minimize();
 				notepad.minimize();
 				paintApp.minimize();
+				qxchatApp.minimize();
 			},
 		},
 	},
@@ -713,6 +717,8 @@ function buildPaintBody(body: HTMLDivElement): void {
 	let W = 960;
 	let H = 600;
 	let tab: "home" | "view" = "home";
+	let undoBtn: HTMLButtonElement | null = null;
+	let redoBtn: HTMLButtonElement | null = null;
 
 	const ZOOMS = [25, 50, 100, 200, 400, 800];
 	const SIZES = [1, 2, 3, 5, 8];
@@ -733,7 +739,23 @@ function buildPaintBody(body: HTMLDivElement): void {
 	viewTab.type = "button";
 	viewTab.className = "w10-ptab";
 	viewTab.textContent = "View";
-	tabs.append(fileTab, homeTab, viewTab);
+	const qatUndo = document.createElement("button");
+	qatUndo.type = "button";
+	qatUndo.className = "w10-pqat";
+	qatUndo.title = "Undo (Ctrl+Z)";
+	qatUndo.innerHTML = `<span aria-hidden="true">↶</span>`;
+	qatUndo.disabled = true;
+	qatUndo.onclick = () => doUndo();
+	const qatRedo = document.createElement("button");
+	qatRedo.type = "button";
+	qatRedo.className = "w10-pqat";
+	qatRedo.title = "Redo (Ctrl+Y)";
+	qatRedo.innerHTML = `<span aria-hidden="true">↷</span>`;
+	qatRedo.disabled = true;
+	qatRedo.onclick = () => doRedo();
+	undoBtn = qatUndo;
+	redoBtn = qatRedo;
+	tabs.append(qatUndo, qatRedo, fileTab, homeTab, viewTab);
 
 	const ribbon = document.createElement("div");
 	ribbon.className = "w10-paint-ribbon";
@@ -816,6 +838,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 	}
 	function commitFloating(): void {
 		if (!floating) return;
+		snapshot();
 		ctx.drawImage(floating.cv, floating.x, floating.y);
 		floating = null;
 		sel = null;
@@ -852,6 +875,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		nw = Math.max(1, Math.min(2000, Math.round(nw)));
 		nh = Math.max(1, Math.min(2000, Math.round(nh)));
 		if (nw === W && nh === H) return;
+		snapshot();
 		const t = document.createElement("canvas");
 		t.width = Math.min(nw, W);
 		t.height = Math.min(nh, H);
@@ -872,6 +896,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 	function rotateCanvas(dir: 1 | -1): void {
 		commitFloating();
 		closeText(true);
+		snapshot();
 		const t = document.createElement("canvas");
 		t.width = H;
 		t.height = W;
@@ -896,6 +921,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 	function flipCanvas(horizontal: boolean): void {
 		commitFloating();
 		closeText(true);
+		snapshot();
 		const t = document.createElement("canvas");
 		t.width = W;
 		t.height = H;
@@ -974,6 +1000,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		const fy = parseFloat(ta.dataset.y ?? "0") || 0;
 		ta.remove();
 		if (commit && v) {
+			snapshot();
 			ctx.save();
 			ctx.fillStyle = color1;
 			ctx.font = `${fontSize}px "Segoe UI", system-ui, sans-serif`;
@@ -1007,10 +1034,14 @@ function buildPaintBody(body: HTMLDivElement): void {
 				closeText(false);
 			} else if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
+				beginAction();
 				closeText(true);
 			}
 		});
-		ta.addEventListener("blur", () => closeText(true));
+		ta.addEventListener("blur", () => {
+			beginAction();
+			closeText(true);
+		});
 		wrap.appendChild(ta);
 		textBox = ta;
 		ta.focus();
@@ -1037,8 +1068,10 @@ function buildPaintBody(body: HTMLDivElement): void {
 		const box = selBox();
 		if (!box || box.w <= 0 || box.h <= 0) return;
 		copyToClip(box);
+		beginAction();
 		if (floating) {
 			if (!floating.cut) {
+				snapshot();
 				ctx.save();
 				ctx.fillStyle = color2;
 				ctx.fillRect(floating.ox, floating.oy, floating.cv.width, floating.cv.height);
@@ -1046,6 +1079,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 			}
 			floating = null;
 		} else if (sel) {
+			snapshot();
 			ctx.save();
 			ctx.fillStyle = color2;
 			ctx.fillRect(sel.x, sel.y, sel.w, sel.h);
@@ -1069,9 +1103,44 @@ function buildPaintBody(body: HTMLDivElement): void {
 		ensureAnts();
 		drawOverlay();
 	}
+	async function pasteBlob(blob: Blob): Promise<void> {
+		const bmp = await createImageBitmap(blob);
+		const scale = Math.min(1, 800 / Math.max(1, Math.max(bmp.width, bmp.height)));
+		const w = Math.max(1, Math.round(bmp.width * scale));
+		const h = Math.max(1, Math.round(bmp.height * scale));
+		const t = document.createElement("canvas");
+		t.width = w;
+		t.height = h;
+		(t.getContext("2d") as CanvasRenderingContext2D).drawImage(bmp, 0, 0, w, h);
+		bmp.close();
+		beginAction();
+		commitFloating();
+		closeText(true);
+		floating = { cv: t, x: 12, y: 12, ox: 12, oy: 12, cut: true };
+		sel = null;
+		ensureAnts();
+		drawOverlay();
+	}
+	async function doPasteSmart(): Promise<void> {
+		try {
+			const items = await navigator.clipboard.read();
+			for (const item of items) {
+				const type = item.types.find((t) => t.startsWith("image/"));
+				if (type) {
+					await pasteBlob(await item.getType(type));
+					return;
+				}
+			}
+		} catch {
+			// Clipboard API unavailable/denied — fall back to the internal clipboard.
+		}
+		doPaste();
+	}
 	function doDelete(): void {
+		beginAction();
 		if (floating) {
 			if (!floating.cut) {
+				snapshot();
 				ctx.save();
 				ctx.fillStyle = color2;
 				ctx.fillRect(floating.ox, floating.oy, floating.cv.width, floating.cv.height);
@@ -1085,6 +1154,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 			return;
 		}
 		if (sel && sel.w > 0 && sel.h > 0) {
+			snapshot();
 			ctx.save();
 			ctx.fillStyle = color2;
 			ctx.fillRect(sel.x, sel.y, sel.w, sel.h);
@@ -1110,8 +1180,10 @@ function buildPaintBody(body: HTMLDivElement): void {
 	}
 	function doNew(): void {
 		guardDirty(() => {
+			beginAction();
 			commitFloatingSilent();
 			closeText(false);
+			snapshot();
 			W = 960;
 			H = 600;
 			canvas.width = W;
@@ -1133,6 +1205,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		drawOverlay();
 	}
 	function doSave(): void {
+		beginAction();
 		commitFloating();
 		closeText(true);
 		canvas.toBlob((blob) => {
@@ -1159,6 +1232,10 @@ function buildPaintBody(body: HTMLDivElement): void {
 		const img = new Image();
 		img.onload = () => {
 			URL.revokeObjectURL(url);
+			beginAction();
+			commitFloatingSilent();
+			closeText(false);
+			snapshot();
 			const scale = Math.min(1, 2000 / Math.max(1, Math.max(img.naturalWidth, img.naturalHeight)));
 			W = Math.max(1, Math.round(img.naturalWidth * scale));
 			H = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -1177,6 +1254,72 @@ function buildPaintBody(body: HTMLDivElement): void {
 		img.src = url;
 	};
 
+	// ----- history (undo/redo) -----
+	interface PaintSnap {
+		w: number;
+		h: number;
+		img: ImageData;
+	}
+	const hist: PaintSnap[] = [];
+	const future: PaintSnap[] = [];
+	let actionSeq = 0;
+	let snapFor = -1;
+	function beginAction(): void {
+		actionSeq++;
+	}
+	function snapshot(): void {
+		if (snapFor === actionSeq) return;
+		snapFor = actionSeq;
+		try {
+			hist.push({ w: W, h: H, img: ctx.getImageData(0, 0, W, H) });
+		} catch {
+			return;
+		}
+		if (hist.length > 30) hist.shift();
+		future.length = 0;
+		syncUndoBtns();
+	}
+	function syncUndoBtns(): void {
+		if (undoBtn) undoBtn.disabled = hist.length === 0;
+		if (redoBtn) redoBtn.disabled = future.length === 0;
+	}
+	function restoreSnap(s: PaintSnap): void {
+		floating = null;
+		closeText(false);
+		sel = null;
+		stopAnts();
+		W = s.w;
+		H = s.h;
+		canvas.width = W;
+		canvas.height = H;
+		ctx.putImageData(s.img, 0, 0);
+		applyZoom();
+		dirty = true;
+	}
+	function doUndo(): void {
+		const s = hist.pop();
+		if (!s) return;
+		try {
+			future.push({ w: W, h: H, img: ctx.getImageData(0, 0, W, H) });
+		} catch {
+			// Keep going with the restore.
+		}
+		restoreSnap(s);
+		syncUndoBtns();
+	}
+	function doRedo(): void {
+		const s = future.pop();
+		if (!s) return;
+		try {
+			hist.push({ w: W, h: H, img: ctx.getImageData(0, 0, W, H) });
+		} catch {
+			// Keep going with the restore.
+		}
+		if (hist.length > 30) hist.shift();
+		restoreSnap(s);
+		syncUndoBtns();
+	}
+
 	// ----- ribbon -----
 	function syncRibbon(): void {
 		for (const el of Array.from(ribbon.querySelectorAll("[data-tool]"))) {
@@ -1190,9 +1333,6 @@ function buildPaintBody(body: HTMLDivElement): void {
 		}
 		for (const el of Array.from(ribbon.querySelectorAll('[data-toggle="fill"]'))) {
 			(el as HTMLElement).classList.toggle("w10-on", shapeFill);
-		}
-		for (const el of Array.from(ribbon.querySelectorAll('[data-clip="paste"]'))) {
-			(el as HTMLButtonElement).disabled = clip === null;
 		}
 	}
 	function setTool(t: PaintTool): void {
@@ -1210,6 +1350,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		t.textContent = label;
 		b.appendChild(t);
 		b.onclick = () => {
+			beginAction();
 			commitFloating();
 			closeText(true);
 			setTool(id);
@@ -1278,8 +1419,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		}
 		// Clipboard
 		const clipG = pgroup("Clipboard");
-		const pasteBtn = paction("Paste", ICON_PASTE, "Paste (Ctrl+V)", doPaste);
-		pasteBtn.dataset.clip = "paste";
+		const pasteBtn = paction("Paste", ICON_PASTE, "Paste image (Ctrl+V)", () => void doPasteSmart());
 		clipG.appendChild(pasteBtn);
 		clipG.appendChild(paction("Cut", ICON_CUT, "Cut (Ctrl+X)", doCut));
 		clipG.appendChild(paction("Copy", ICON_COPY, "Copy (Ctrl+C)", doCopy));
@@ -1287,12 +1427,14 @@ function buildPaintBody(body: HTMLDivElement): void {
 		const imgG = pgroup("Image");
 		imgG.appendChild(ptool("select", "Select", P_SELECT, "Rectangular selection"));
 		imgG.appendChild(paction("Crop", P_CROP, "Crop to selection", () => {
+			beginAction();
 			const box = floating
 				? { x: floating.x, y: floating.y, w: floating.cv.width, h: floating.cv.height }
 				: sel;
 			commitFloating();
 			closeText(true);
 			if (!box || box.w < 2 || box.h < 2) return;
+			snapshot();
 			const cx = Math.max(0, Math.min(W - 2, Math.round(box.x)));
 			const cy = Math.max(0, Math.min(H - 2, Math.round(box.y)));
 			const cw = Math.max(2, Math.min(W - cx, Math.round(box.w)));
@@ -1314,8 +1456,22 @@ function buildPaintBody(body: HTMLDivElement): void {
 			dirty = true;
 		}));
 		imgG.appendChild(paction("Resize", P_RESIZE, "Resize by percent", openResize));
-		imgG.appendChild(paction("↺", `<span class="w10-ptool-glyph">↺</span>`, "Rotate left 90°", () => rotateCanvas(-1)));
-		imgG.appendChild(paction("↻", `<span class="w10-ptool-glyph">↻</span>`, "Rotate right 90°", () => rotateCanvas(1)));
+		imgG.appendChild(paction("↺", `<span class="w10-ptool-glyph">↺</span>`, "Rotate left 90°", () => {
+			beginAction();
+			rotateCanvas(-1);
+		}));
+		imgG.appendChild(paction("↻", `<span class="w10-ptool-glyph">↻</span>`, "Rotate right 90°", () => {
+			beginAction();
+			rotateCanvas(1);
+		}));
+		imgG.appendChild(paction("Flip H", `<span class="w10-ptool-glyph">⇄</span>`, "Flip horizontal", () => {
+			beginAction();
+			flipCanvas(true);
+		}));
+		imgG.appendChild(paction("Flip V", `<span class="w10-ptool-glyph">⇅</span>`, "Flip vertical", () => {
+			beginAction();
+			flipCanvas(false);
+		}));
 		// Tools
 		const toolsG = pgroup("Tools");
 		toolsG.appendChild(ptool("pencil", "Pencil", ICON_EDIT));
@@ -1472,6 +1628,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		btns.className = "w10-toolbar";
 		btns.style.marginBottom = "0";
 		const ok = w10Button("OK", () => {
+			beginAction();
 			const ph = Math.max(1, Math.min(800, parseInt(inH.value, 10) || 100));
 			const pv = Math.max(1, Math.min(800, parseInt(inV.value, 10) || 100));
 			resizeCanvas((W * ph) / 100, (H * pv) / 100);
@@ -1695,6 +1852,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		if ((e.target as HTMLElement).closest(".w10-ptext")) return;
 		wrap.focus();
 		if (e.button !== 0 && e.button !== 2) return;
+		beginAction();
 		e.preventDefault();
 		try {
 			wrap.setPointerCapture(e.pointerId);
@@ -1717,6 +1875,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		if (tool === "fill") {
 			commitFloating();
 			closeText(true);
+			snapshot();
 			flood(p.x, p.y, e.button === 2 ? color2 : color1);
 			dirty = true;
 			return;
@@ -1734,6 +1893,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 		}
 		commitFloating();
 		closeText(true);
+		snapshot();
 		stroke = { btn: e.button, lx: p.x, ly: p.y, moved: false };
 		const col = tool === "eraser" ? (e.button === 2 ? color1 : color2) : e.button === 2 ? color2 : color1;
 		if (tool === "eraser") eraserSegment(p.x, p.y, p.x, p.y, col);
@@ -1790,6 +1950,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 			const alt = s.btn === 2 ? color1 : color2;
 			octx.clearRect(0, 0, W, H);
 			drawOverlay();
+			snapshot();
 			traceShape(ctx, s.x0, s.y0, p.x, p.y, main, alt);
 			dirty = true;
 			return;
@@ -1807,25 +1968,32 @@ function buildPaintBody(body: HTMLDivElement): void {
 	wrap.addEventListener("keydown", (e) => {
 		if ((e.target as HTMLElement).closest(".w10-ptext")) return;
 		const mod = e.ctrlKey || e.metaKey;
-		if (mod && e.key.toLowerCase() === "c") {
+		const key = e.key.toLowerCase();
+		if (mod && key === "c") {
 			e.preventDefault();
 			doCopy();
-		} else if (mod && e.key.toLowerCase() === "x") {
+		} else if (mod && key === "x") {
 			e.preventDefault();
 			doCut();
-		} else if (mod && e.key.toLowerCase() === "v") {
+		} else if (mod && key === "v") {
 			e.preventDefault();
-			doPaste();
-		} else if (mod && e.key.toLowerCase() === "a") {
+			void doPasteSmart();
+		} else if (mod && key === "a") {
 			e.preventDefault();
 			commitFloating();
 			closeText(true);
 			sel = { x: 0, y: 0, w: W, h: H };
 			ensureAnts();
 			drawOverlay();
-		} else if (mod && e.key.toLowerCase() === "s") {
+		} else if (mod && key === "s") {
 			e.preventDefault();
 			doSave();
+		} else if (mod && key === "z" && !e.shiftKey) {
+			e.preventDefault();
+			doUndo();
+		} else if (mod && (key === "y" || (key === "z" && e.shiftKey))) {
+			e.preventDefault();
+			doRedo();
 		} else if (e.key === "Delete" || e.key === "Backspace") {
 			e.preventDefault();
 			doDelete();
@@ -1849,6 +2017,7 @@ function buildPaintBody(body: HTMLDivElement): void {
 	grip.addEventListener("pointerdown", (e) => {
 		e.preventDefault();
 		e.stopPropagation();
+		beginAction();
 		try {
 			grip.setPointerCapture(e.pointerId);
 		} catch {
@@ -1996,6 +2165,425 @@ const notepad = desktop.createApp({
 	},
 });
 
+// ---- QxChat (chat-only client, qxchat.ts running in the browser) ----
+// The SDK ships TS sources with path aliases + node:crypto (challenge code):
+// esbuild resolves them for the demo bundle (see build:demo --alias and
+// demo/vendor/node-crypto-shim.ts). E2EE runs on WebCrypto, transport on the
+// native browser WebSocket — no Bun gateway needed.
+const QX_SERVER_KEY = "win10ml.qxchat.server";
+const QX_TOKEN_KEY = "win10ml.qxchat.token";
+const QX_ROOM_KEY = "win10ml.qxchat.room";
+const QX_DEFAULT_SERVER = "wss://qxch.at/ws";
+
+function qxApiBase(wsUrl: string): string {
+	return wsUrl.replace(/^ws/, "http").replace(/\/ws$/, "");
+}
+
+function qxRoomIdOf(input: string): string {
+	const v = input.trim();
+	if (/^[0-9a-fA-F]{96}$/.test(v)) return v.slice(0, 32).toLowerCase();
+	return v;
+}
+
+function qxLoad(key: string, fallback: string): string {
+	try {
+		return localStorage.getItem(key) ?? fallback;
+	} catch {
+		return fallback;
+	}
+}
+
+function qxSave(key: string, value: string): void {
+	try {
+		if (value) localStorage.setItem(key, value);
+		else localStorage.removeItem(key);
+	} catch {
+		// Private mode — keep it in memory only.
+	}
+}
+
+function buildQxChatBody(body: HTMLDivElement): void {
+	body.classList.add("w10-body-flush");
+	const root = document.createElement("div");
+	root.className = "w10-chat";
+
+	let client: SelfbotClient | null = null;
+	let me = "";
+	let roomId = "";
+	const bubbles = new Map<string, HTMLDivElement>();
+	const typingTimers = new Map<string, number>();
+
+	// ----- status -----
+	const statusBar = document.createElement("div");
+	statusBar.className = "w10-chat-status";
+	const dot = document.createElement("span");
+	dot.className = "w10-dot";
+	const statusText = document.createElement("span");
+	statusText.textContent = "Offline";
+	const logoutBtn = document.createElement("button");
+	logoutBtn.type = "button";
+	logoutBtn.className = "w10-btn w10-btn-small";
+	logoutBtn.textContent = "Logout";
+	logoutBtn.style.display = "none";
+	logoutBtn.style.marginLeft = "auto";
+	logoutBtn.onclick = () => {
+		qxSave(QX_TOKEN_KEY, "");
+		try {
+			client?.logout();
+		} catch {
+			// Already gone.
+		}
+		client = null;
+		showConnect();
+	};
+	statusBar.append(dot, statusText, logoutBtn);
+
+	const setStatus = (mode: "off" | "busy" | "on", text: string): void => {
+		dot.className = `w10-dot${mode === "on" ? " w10-on" : mode === "busy" ? " w10-busy" : ""}`;
+		statusText.textContent = text;
+	};
+
+	// ----- views -----
+	const viewConnect = document.createElement("div");
+	viewConnect.className = "w10-chat-form";
+	const viewRoom = document.createElement("div");
+	viewRoom.className = "w10-chat-form";
+	viewRoom.style.display = "none";
+	const viewChat = document.createElement("div");
+	viewChat.className = "w10-chat";
+	viewChat.style.display = "none";
+	viewChat.style.flex = "1";
+	viewChat.style.minHeight = "0";
+
+	const showOnly = (el: HTMLElement): void => {
+		for (const v of [viewConnect, viewRoom, viewChat]) v.style.display = v === el ? "" : "none";
+	};
+	const showConnect = (): void => {
+		me = "";
+		roomId = "";
+		logoutBtn.style.display = "none";
+		setStatus("off", "Offline");
+		showOnly(viewConnect);
+	};
+	const showRoom = (): void => {
+		logoutBtn.style.display = "";
+		setStatus("on", me ? `Online as ${me}` : "Online");
+		showOnly(viewRoom);
+	};
+	const showChat = (): void => {
+		logoutBtn.style.display = "";
+		setStatus("on", me ? `${me} · ${roomId.slice(0, 8)}…` : roomId);
+		showOnly(viewChat);
+	};
+
+	const field = (label: string, input: HTMLInputElement, hint: string): HTMLDivElement => {
+		const wrap = document.createElement("div");
+		wrap.className = "w10-setting w10-setting-col";
+		const title = document.createElement("div");
+		title.className = "w10-setting-title";
+		title.textContent = label;
+		const sub = document.createElement("div");
+		sub.className = "w10-desc";
+		sub.textContent = hint;
+		wrap.append(title, sub, input);
+		return wrap;
+	};
+	const textInput = (value: string, placeholder: string, password = false): HTMLInputElement => {
+		const input = document.createElement("input");
+		input.type = password ? "password" : "text";
+		input.className = "w10-textbox";
+		input.value = value;
+		input.placeholder = placeholder;
+		input.spellcheck = false;
+		return input;
+	};
+
+	// ----- connect form -----
+	const serverInput = textInput(qxLoad(QX_SERVER_KEY, QX_DEFAULT_SERVER), QX_DEFAULT_SERVER);
+	const userInput = textInput("", "qx username");
+	const passInput = textInput("", "password", true);
+	const tokenInput = textInput(qxLoad(QX_TOKEN_KEY, ""), "session token (or login below)", true);
+	viewConnect.appendChild(w10GroupTitle("QxChat"));
+	viewConnect.appendChild(w10Desc("Chat-only client, qxchat.ts running natively in your browser (E2EE included)."));
+	viewConnect.appendChild(field("Server", serverInput, "QXChat gateway WebSocket URL."));
+	viewConnect.appendChild(field("Session token", tokenInput, "Preferred: paste a token, nothing is stored but the token."));
+	viewConnect.appendChild(field("Username", userInput, "Or login with username + password (one shot)."));
+	viewConnect.appendChild(field("Password", passInput, "Exchanged for a token, never stored."));
+	const connectRow = document.createElement("div");
+	connectRow.className = "w10-toolbar";
+	const loginTokenBtn = w10Button("Login (token)", () => {
+		const token = tokenInput.value.trim();
+		if (!token) {
+			tokenInput.focus();
+			return;
+		}
+		void connect({ token });
+	});
+	const loginPassBtn = w10Button("Login (pass)", () => {
+		if (!userInput.value.trim() || !passInput.value) {
+			(userInput.value.trim() ? passInput : userInput).focus();
+			return;
+		}
+		const auth = { user: userInput.value.trim(), pass: passInput.value };
+		passInput.value = "";
+		void connect(auth);
+	});
+	connectRow.append(loginTokenBtn, loginPassBtn);
+	viewConnect.appendChild(connectRow);
+
+	// ----- room form -----
+	const roomInput = textInput(qxLoad(QX_ROOM_KEY, ""), "96-char invite token or room ID");
+	viewRoom.appendChild(w10GroupTitle("Room"));
+	viewRoom.appendChild(field("Invite token / room ID", roomInput, "Paste a 96-char invite token (key auto-registered)."));
+	const joinRow = document.createElement("div");
+	joinRow.className = "w10-toolbar";
+	const joinBtn = w10Button("Join", () => {
+		void doJoin();
+	});
+	joinRow.appendChild(joinBtn);
+	viewRoom.appendChild(joinRow);
+
+	// ----- chat view -----
+	const log = document.createElement("div");
+	log.className = "w10-chat-log";
+	const emptyHint = document.createElement("div");
+	emptyHint.className = "w10-chat-empty";
+	emptyHint.textContent = "No messages yet — say hi.";
+	log.appendChild(emptyHint);
+	const typingLine = document.createElement("div");
+	typingLine.className = "w10-chat-typing";
+	const compose = document.createElement("div");
+	compose.className = "w10-chat-compose";
+	const msgInput = textInput("", "Message… (Enter to send, 2000 max)");
+	const sendBtn = w10Button("Send", () => sendCurrent());
+	const leaveBtn = w10Button("Leave", () => {
+		void doLeave();
+	});
+	compose.append(msgInput, sendBtn, leaveBtn);
+	viewChat.append(log, typingLine, compose);
+
+	const nearBottom = (): boolean => log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+	const scrollDown = (): void => {
+		log.scrollTop = log.scrollHeight;
+	};
+	const fmtTime = (ts: number): string => {
+		const d = new Date(typeof ts === "number" && ts > 0 ? ts : Date.now());
+		return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+	};
+	const sysMsg = (text: string): void => {
+		emptyHint.remove();
+		const row = document.createElement("div");
+		row.className = "w10-chat-row w10-sys";
+		const bubble = document.createElement("div");
+		bubble.className = "w10-chat-bubble";
+		bubble.textContent = text;
+		row.appendChild(bubble);
+		log.appendChild(row);
+		while (log.children.length > 200) log.firstChild?.remove();
+		if (nearBottom()) scrollDown();
+	};
+	const addMsg = (m: { messageId: string; username: string; text: string; timestamp: number; mine: boolean; locked: boolean }): void => {
+		emptyHint.remove();
+		const stick = nearBottom();
+		const row = document.createElement("div");
+		row.className = `w10-chat-row${m.mine ? " w10-mine" : ""}`;
+		const meta = document.createElement("div");
+		meta.className = "w10-chat-meta";
+		meta.textContent = `${m.username} · ${fmtTime(m.timestamp)}`;
+		const bubble = document.createElement("div");
+		bubble.className = "w10-chat-bubble";
+		bubble.textContent = m.locked ? "🔒 encrypted message (no key)" : m.text;
+		row.append(meta, bubble);
+		log.appendChild(row);
+		if (m.messageId) bubbles.set(m.messageId, bubble);
+		while (log.children.length > 200) log.firstChild?.remove();
+		if (stick) scrollDown();
+	};
+	const paintTyping = (active: string[]): void => {
+		typingLine.textContent = active.length === 0 ? "" : `${active.join(", ")} ${active.length === 1 ? "is" : "are"} typing…`;
+	};
+	const typingUsers = new Set<string>();
+	const markTyping = (username: string, typing: boolean): void => {
+		const prev = typingTimers.get(username);
+		if (prev !== undefined) {
+			clearTimeout(prev);
+			typingTimers.delete(username);
+		}
+		typingUsers.delete(username);
+		if (typing && username !== me) {
+			typingUsers.add(username);
+			typingTimers.set(
+				username,
+				window.setTimeout(() => {
+					typingTimers.delete(username);
+					typingUsers.delete(username);
+					paintTyping(Array.from(typingUsers));
+				}, 3000),
+			);
+		}
+		paintTyping(Array.from(typingUsers));
+	};
+
+	const sendCurrent = (): void => {
+		const text = msgInput.value.slice(0, 2000);
+		if (!text.trim() || !client || !roomId) return;
+		msgInput.value = "";
+		msgInput.focus();
+		client.sendMessage(roomId, text).catch((err: unknown) => {
+			sysMsg(`Error: ${err instanceof Error ? err.message : "send failed"}`);
+		});
+	};
+	msgInput.addEventListener("keydown", (e) => {
+		e.stopPropagation();
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			sendCurrent();
+		}
+	});
+	sendBtn.onclick = () => sendCurrent();
+
+	async function doJoin(): Promise<void> {
+		if (!client) return;
+		const raw = roomInput.value.trim();
+		if (!raw) {
+			roomInput.focus();
+			return;
+		}
+		setStatus("busy", "Joining…");
+		try {
+			await client.joinRoom(raw);
+			roomId = qxRoomIdOf(raw);
+			qxSave(QX_ROOM_KEY, raw);
+			log.innerHTML = "";
+			bubbles.clear();
+			log.appendChild(emptyHint);
+			sysMsg(`Joined ${roomId.slice(0, 12)}…`);
+			showChat();
+			msgInput.focus();
+			try {
+				await client.fetchHistory(roomId);
+			} catch {
+				// History is best-effort; live messages still flow.
+			}
+		} catch (err) {
+			setStatus("on", me ? `Online as ${me}` : "Online");
+			sysMsg(`Error: ${err instanceof Error ? err.message : "join failed"}`);
+		}
+	}
+
+	async function doLeave(): Promise<void> {
+		if (client && roomId) {
+			try {
+				await client.leaveRoom(roomId);
+			} catch {
+				// Best-effort.
+			}
+		}
+		roomId = "";
+		qxSave(QX_ROOM_KEY, "");
+		showRoom();
+	}
+
+	function subscribe(c: SelfbotClient): void {
+		c.on(Events.Ready, () => {
+			me = c.username;
+			qxSave(QX_TOKEN_KEY, tokenInput.value.trim());
+			if (roomInput.value.trim()) void doJoin();
+			else showRoom();
+		});
+		c.on(Events.MessageCreate, (m) => {
+			if (m.roomId !== roomId) return;
+			addMsg({
+				messageId: m.messageId,
+				username: m.username || "?",
+				text: m.text,
+				timestamp: m.timestamp,
+				mine: m.username === c.username,
+				locked: m.locked,
+			});
+		});
+		c.on(Events.MessageUpdate, (m) => {
+			if (m.roomId !== roomId) return;
+			const b = bubbles.get(m.messageId);
+			if (b) b.textContent = m.locked ? "🔒 encrypted message (no key)" : m.text;
+		});
+		c.on(Events.MessageDelete, (d) => {
+			if (d.roomId !== roomId) return;
+			const b = bubbles.get(d.messageId);
+			if (b) {
+				b.textContent = "Message deleted.";
+				b.parentElement?.classList.add("w10-sys");
+			}
+		});
+		c.on(Events.RoomMessagesClear, (d) => {
+			if (d.roomId !== roomId) return;
+			log.innerHTML = "";
+			bubbles.clear();
+			log.appendChild(emptyHint);
+		});
+		c.on(Events.TypingStart, (d) => {
+			if (d.roomId !== roomId) return;
+			markTyping(d.username, true);
+		});
+		c.on(Events.TypingEnd, (d) => {
+			if (d.roomId !== roomId) return;
+			markTyping(d.username, false);
+		});
+		c.on(Events.PresenceUpdate, (d) => {
+			sysMsg(`${d.username} is ${d.status}.`);
+		});
+		c.on(Events.UserJoin, (d) => {
+			if (d.roomId !== roomId) return;
+			sysMsg(`${d.username} joined.`);
+		});
+		c.on(Events.UserLeave, (d) => {
+			if (d.roomId !== roomId) return;
+			sysMsg(`${d.username} left.`);
+		});
+		c.on(Events.Disconnect, (reason) => {
+			setStatus("off", String(reason || "disconnected"));
+			sysMsg("Disconnected from QXChat.");
+		});
+		c.on(Events.Banned, (d) => {
+			sysMsg(`Banned: ${d.reason}`);
+		});
+		c.on(Events.Error, (err) => {
+			sysMsg(`Error: ${err?.message || "QXChat error"}`);
+			if (!me) setStatus("off", "Login failed");
+		});
+	}
+
+	async function connect(auth: { token: string } | { user: string; pass: string }): Promise<void> {
+		try {
+			client?.logout();
+		} catch {
+			// Already gone.
+		}
+		client = null;
+		const wsUrl = serverInput.value.trim() || QX_DEFAULT_SERVER;
+		qxSave(QX_SERVER_KEY, wsUrl);
+		setStatus("busy", "Logging in…");
+		const c = new SelfbotClient({ wsUrl });
+		subscribe(c);
+		try {
+			if ("token" in auth) await c.login(auth.token);
+			else {
+				const token = await SelfbotClient.fetchToken(auth.user, auth.pass, qxApiBase(wsUrl));
+				tokenInput.value = token;
+				await c.login(token);
+			}
+			client = c;
+			// Events.Ready switches to the room view.
+		} catch (err) {
+			setStatus("off", "Login failed");
+			sysMsg(`Error: ${err instanceof Error ? err.message : "login failed"}`);
+		}
+	}
+
+	root.append(statusBar, viewConnect, viewRoom, viewChat);
+	body.appendChild(root);
+}
+
 // ---- App 8 : Paint (paint.exe) ----
 const paintApp = desktop.createApp({
 	id: "paint",
@@ -2008,11 +2596,1359 @@ const paintApp = desktop.createApp({
 	build: (body) => buildPaintBody(body),
 });
 
+// ---- App 9 : Excel (excel.exe) ----
+const EXCEL_KEY = "win10ml.excel";
+const EX_COLS = 26;
+const EX_ROWS = 100;
+
+interface ExCell {
+	raw: string;
+	bold?: boolean;
+	italic?: boolean;
+	align?: "" | "l" | "c" | "r";
+}
+
+type ExVal =
+	| { t: "n"; v: number }
+	| { t: "s"; v: string }
+	| { t: "b"; v: boolean }
+	| { t: "e"; v: string }
+	| { t: "arr"; v: ExVal[] }
+	| { t: "empty" };
+
+const EX_ERR_DIV = "#DIV/0!";
+const EX_ERR_NAME = "#NAME?";
+const EX_ERR_VALUE = "#VALUE!";
+const EX_ERR_REF = "#REF!";
+const EX_ERR_CIRC = "#CIRC!";
+
+function exKey(c: number, r: number): string {
+	return `${c}:${r}`;
+}
+
+function exColName(i: number): string {
+	let n = i + 1;
+	let s = "";
+	while (n > 0) {
+		const m = (n - 1) % 26;
+		s = String.fromCharCode(65 + m) + s;
+		n = Math.floor((n - 1) / 26);
+	}
+	return s;
+}
+
+function exRefName(c: number, r: number): string {
+	return `${exColName(c)}${r + 1}`;
+}
+
+/** Parse "B12" (tolerates $) -> {c, r} or null. */
+function exParseRef(text: string): { c: number; r: number } | null {
+	const m = /^\$?([A-Za-z]{1,3})\$?([0-9]+)$/.exec(text.trim());
+	if (!m) return null;
+	const letters = m[1].toUpperCase();
+	let c = 0;
+	for (const ch of letters) c = c * 26 + (ch.charCodeAt(0) - 64);
+	c -= 1;
+	const r = parseInt(m[2], 10) - 1;
+	if (c < 0 || r < 0) return null;
+	return { c, r };
+}
+
+function exInGrid(c: number, r: number): boolean {
+	return c >= 0 && c < EX_COLS && r >= 0 && r < EX_ROWS;
+}
+
+function exDisplay(v: ExVal): string {
+	switch (v.t) {
+		case "n": return String(parseFloat(v.v.toPrecision(10)));
+		case "s": return v.v;
+		case "b": return v.v ? "TRUE" : "FALSE";
+		case "e": return v.v;
+		case "arr": return EX_ERR_VALUE;
+		case "empty": return "";
+	}
+}
+
+function exToNumber(v: ExVal): number | null {
+	switch (v.t) {
+		case "n": return v.v;
+		case "b": return v.v ? 1 : 0;
+		case "empty": return 0;
+		case "s": {
+			const t = v.v.trim();
+			if (t === "") return null;
+			const n = Number(t);
+			return Number.isFinite(n) ? n : null;
+		}
+		default: return null;
+	}
+}
+
+function exToText(v: ExVal): string | null {
+	switch (v.t) {
+		case "s": return v.v;
+		case "n": return exDisplay(v);
+		case "b": return v.v ? "TRUE" : "FALSE";
+		case "empty": return "";
+		default: return null;
+	}
+}
+
+function exTruth(v: ExVal): boolean {
+	switch (v.t) {
+		case "b": return v.v;
+		case "n": return v.v !== 0;
+		case "s": return v.v.length > 0;
+		case "empty": return false;
+		default: return false;
+	}
+}
+
+type ExTok =
+	| { t: "num"; v: number }
+	| { t: "str"; v: string }
+	| { t: "id"; v: string }
+	| { t: "ref"; c: number; r: number }
+	| { t: "op"; v: string }
+	| { t: "lp" } | { t: "rp" } | { t: "comma" } | { t: "colon" } | { t: "eof" };
+
+class ExParseError extends Error {}
+
+function exTokenize(src: string): ExTok[] {
+	const out: ExTok[] = [];
+	let i = 0;
+	const fail = (): never => {
+		throw new ExParseError(`cannot tokenize at ${i}`);
+	};
+	while (i < src.length) {
+		const ch = src[i];
+		if (ch === " " || ch === "\t" || ch === "\n") {
+			i++;
+			continue;
+		}
+		if ((ch >= "0" && ch <= "9") || (ch === "." && i + 1 < src.length && src[i + 1] >= "0" && src[i + 1] <= "9")) {
+			let j = i;
+			while (j < src.length && ((src[j] >= "0" && src[j] <= "9") || src[j] === ".")) j++;
+			if (j < src.length && (src[j] === "e" || src[j] === "E")) {
+				let k = j + 1;
+				if (src[k] === "+" || src[k] === "-") k++;
+				if (k < src.length && src[k] >= "0" && src[k] <= "9") {
+					j = k;
+					while (j < src.length && src[j] >= "0" && src[j] <= "9") j++;
+				}
+			}
+			out.push({ t: "num", v: parseFloat(src.slice(i, j)) });
+			i = j;
+			continue;
+		}
+		if (ch === '"') {
+			let j = i + 1;
+			let s = "";
+			while (j < src.length && src[j] !== '"') {
+				if (src[j] === '"' && src[j + 1] === '"') {
+					s += '"';
+					j += 2;
+				} else {
+					s += src[j];
+					j++;
+				}
+			}
+			if (j >= src.length) fail();
+			out.push({ t: "str", v: s });
+			i = j + 1;
+			continue;
+		}
+		if ((ch >= "A" && ch <= "Z") || (ch >= "a" && ch <= "z") || ch === "_" || ch === "$") {
+			let j = i;
+			while (j < src.length && /[A-Za-z0-9_.$]/.test(src[j])) j++;
+			const word = src.slice(i, j);
+			const ref = exParseRef(word);
+			out.push(ref ? { t: "ref", c: ref.c, r: ref.r } : { t: "id", v: word });
+			i = j;
+			continue;
+		}
+		const two = src.slice(i, i + 2);
+		if (two === "<=" || two === ">=" || two === "<>") {
+			out.push({ t: "op", v: two });
+			i += 2;
+			continue;
+		}
+		if (ch === "+" || ch === "-" || ch === "*" || ch === "/" || ch === "^" || ch === "%" || ch === "&" || ch === "=" || ch === "<" || ch === ">") {
+			out.push({ t: "op", v: ch });
+			i++;
+			continue;
+		}
+		if (ch === "(") {
+			out.push({ t: "lp" });
+			i++;
+			continue;
+		}
+		if (ch === ")") {
+			out.push({ t: "rp" });
+			i++;
+			continue;
+		}
+		if (ch === ",") {
+			out.push({ t: "comma" });
+			i++;
+			continue;
+		}
+		if (ch === ":") {
+			out.push({ t: "colon" });
+			i++;
+			continue;
+		}
+		fail();
+	}
+	out.push({ t: "eof" });
+	return out;
+}
+
+interface ExScope {
+	lookup: (c: number, r: number) => ExVal;
+}
+
+class ExParser {
+	private toks: ExTok[];
+	private pos = 0;
+	private scope: ExScope;
+
+	constructor(src: string, scope: ExScope) {
+		this.toks = exTokenize(src);
+		this.scope = scope;
+	}
+
+	private peek(): ExTok {
+		return this.toks[this.pos] ?? { t: "eof" };
+	}
+
+	private next(): ExTok {
+		const t = this.peek();
+		this.pos++;
+		return t;
+	}
+
+	parse(): ExVal {
+		const v = this.parseComparison();
+		if (this.peek().t !== "eof") throw new ExParseError("trailing tokens");
+		return v;
+	}
+
+	private parseComparison(): ExVal {
+		let left = this.parseConcat();
+		for (;;) {
+			const t = this.peek();
+			if (t.t !== "op" || (t.v !== "=" && t.v !== "<>" && t.v !== "<" && t.v !== ">" && t.v !== "<=" && t.v !== ">=")) return left;
+			this.next();
+			const right = this.parseConcat();
+			left = exCompare(left, t.v, right);
+			if (left.t === "e") return left;
+		}
+	}
+
+	private parseConcat(): ExVal {
+		let left = this.parseAdd();
+		for (;;) {
+			const t = this.peek();
+			if (t.t !== "op" || t.v !== "&") return left;
+			this.next();
+			const right = this.parseAdd();
+			if (left.t === "e") return left;
+			if (right.t === "e") return right;
+			if (left.t === "arr" || right.t === "arr") return { t: "e", v: EX_ERR_VALUE };
+			const a = exToText(left);
+			const b = exToText(right);
+			if (a === null || b === null) return { t: "e", v: EX_ERR_VALUE };
+			left = { t: "s", v: a + b };
+		}
+	}
+
+	private parseAdd(): ExVal {
+		let left = this.parseMul();
+		for (;;) {
+			const t = this.peek();
+			if (t.t !== "op" || (t.v !== "+" && t.v !== "-")) return left;
+			this.next();
+			const right = this.parseMul();
+			left = exArith(left, t.v, right);
+			if (left.t === "e") return left;
+		}
+	}
+
+	private parseMul(): ExVal {
+		let left = this.parseUnary();
+		for (;;) {
+			const t = this.peek();
+			if (t.t !== "op" || (t.v !== "*" && t.v !== "/")) return left;
+			this.next();
+			const right = this.parseUnary();
+			left = exArith(left, t.v, right);
+			if (left.t === "e") return left;
+		}
+	}
+
+	private parseUnary(): ExVal {
+		const t = this.peek();
+		if (t.t === "op" && (t.v === "-" || t.v === "+")) {
+			this.next();
+			const v = this.parseUnary();
+			if (v.t === "e") return v;
+			const n = exToNumber(v);
+			if (n === null) return { t: "e", v: EX_ERR_VALUE };
+			return { t: "n", v: t.v === "-" ? -n : n };
+		}
+		return this.parsePower();
+	}
+
+	private parsePower(): ExVal {
+		const base = this.parsePostfix();
+		const t = this.peek();
+		if (t.t !== "op" || t.v !== "^") return base;
+		this.next();
+		const exp = this.parseUnary();
+		if (base.t === "e") return base;
+		if (exp.t === "e") return exp;
+		const a = exToNumber(base);
+		const b = exToNumber(exp);
+		if (a === null || b === null) return { t: "e", v: EX_ERR_VALUE };
+		const v = Math.pow(a, b);
+		if (!Number.isFinite(v)) return { t: "e", v: EX_ERR_DIV };
+		return { t: "n", v };
+	}
+
+	private parsePostfix(): ExVal {
+		let v = this.parsePrimary();
+		for (;;) {
+			const t = this.peek();
+			if (t.t !== "op" || t.v !== "%") return v;
+			this.next();
+			if (v.t === "e") return v;
+			const n = exToNumber(v);
+			if (n === null) return { t: "e", v: EX_ERR_VALUE };
+			v = { t: "n", v: n / 100 };
+		}
+	}
+
+	private parsePrimary(): ExVal {
+		const t = this.next();
+		switch (t.t) {
+			case "num": return { t: "n", v: t.v };
+			case "str": return { t: "s", v: t.v };
+			case "ref": {
+				const after = this.peek();
+				if (after.t === "colon") {
+					this.next();
+					const end = this.next();
+					if (end.t !== "ref") throw new ExParseError("range needs A1:B2");
+					return this.range(t.c, t.r, end.c, end.r);
+				}
+				return this.scope.lookup(t.c, t.r);
+			}
+			case "id": {
+				const after = this.peek();
+				if (after.t !== "lp") {
+					const word = t.v.toUpperCase();
+					if (word === "TRUE") return { t: "b", v: true };
+					if (word === "FALSE") return { t: "b", v: false };
+					throw new ExParseError(`unknown name ${t.v}`);
+				}
+				this.next();
+				const args = this.parseArgs();
+				const rp = this.next();
+				if (rp.t !== "rp") throw new ExParseError("missing )");
+				return exCall(t.v, args);
+			}
+			case "lp": {
+				const v = this.parseComparison();
+				if (this.next().t !== "rp") throw new ExParseError("missing )");
+				return v;
+			}
+			default: throw new ExParseError("unexpected token");
+		}
+	}
+
+	private parseArgs(): ExVal[] {
+		const args: ExVal[] = [];
+		if (this.peek().t === "rp") return args;
+		for (;;) {
+			args.push(this.parseComparison());
+			const t = this.peek();
+			if (t.t === "comma") {
+				this.next();
+				continue;
+			}
+			return args;
+		}
+	}
+
+	private range(c1: number, r1: number, c2: number, r2: number): ExVal {
+		if (!exInGrid(c1, r1) || !exInGrid(c2, r2)) return { t: "e", v: EX_ERR_REF };
+		const out: ExVal[] = [];
+		const c0 = Math.min(c1, c2);
+		const c9 = Math.max(c1, c2);
+		const q0 = Math.min(r1, r2);
+		const q9 = Math.max(r1, r2);
+		if ((c9 - c0 + 1) * (q9 - q0 + 1) > 10000) return { t: "e", v: EX_ERR_VALUE };
+		for (let r = q0; r <= q9; r++) {
+			for (let c = c0; c <= c9; c++) out.push(this.scope.lookup(c, r));
+		}
+		return { t: "arr", v: out };
+	}
+}
+
+function exArith(a: ExVal, op: string, b: ExVal): ExVal {
+	if (a.t === "e") return a;
+	if (b.t === "e") return b;
+	if (a.t === "arr" || b.t === "arr") return { t: "e", v: EX_ERR_VALUE };
+	const x = exToNumber(a);
+	const y = exToNumber(b);
+	if (x === null || y === null) return { t: "e", v: EX_ERR_VALUE };
+	let v = 0;
+	if (op === "+") v = x + y;
+	else if (op === "-") v = x - y;
+	else if (op === "*") v = x * y;
+	else v = y === 0 ? NaN : x / y;
+	if (!Number.isFinite(v)) return { t: "e", v: EX_ERR_DIV };
+	return { t: "n", v };
+}
+
+function exRank(v: ExVal): number {
+	if (v.t === "s") return 1;
+	if (v.t === "b") return 2;
+	return 0;
+}
+
+function exCompare(a: ExVal, op: string, b: ExVal): ExVal {
+	if (a.t === "e") return a;
+	if (b.t === "e") return b;
+	if (a.t === "arr" || b.t === "arr") return { t: "e", v: EX_ERR_VALUE };
+	const emptyA = a.t === "empty";
+	const emptyB = b.t === "empty";
+	let eq: boolean;
+	if (emptyA || emptyB) {
+		const other = emptyA ? b : a;
+		const otherIsBlank = other.t === "empty" || (other.t === "n" && other.v === 0) || (other.t === "s" && other.v === "");
+		eq = op === "=" ? otherIsBlank : op === "<>" ? !otherIsBlank : false;
+		if (op !== "=" && op !== "<>") {
+			const n = exToNumber(other);
+			if (n === null) return { t: "e", v: EX_ERR_VALUE };
+			eq = op === "<" ? 0 < n : op === ">" ? 0 > n : op === "<=" ? 0 <= n : 0 >= n;
+		}
+		return { t: "b", v: eq };
+	}
+	if (op === "=" || op === "<>") {
+		if (exRank(a) !== exRank(b)) eq = false;
+		else if (a.t === "s" && b.t === "s") eq = a.v === b.v;
+		else {
+			const x = exToNumber(a);
+			const y = exToNumber(b);
+			eq = x !== null && y !== null && x === y;
+		}
+		return { t: "b", v: op === "=" ? eq : !eq };
+	}
+	if (a.t === "s" && b.t === "s") {
+		eq = op === "<" ? a.v < b.v : op === ">" ? a.v > b.v : op === "<=" ? a.v <= b.v : a.v >= b.v;
+		return { t: "b", v: eq };
+	}
+	if (exRank(a) !== exRank(b)) {
+		// Different type ranks never compare equal: strict and wide agree.
+		const r = exRank(a) < exRank(b);
+		eq = op === "<" || op === "<=" ? r : !r;
+		return { t: "b", v: eq };
+	}
+	const x = exToNumber(a);
+	const y = exToNumber(b);
+	if (x === null || y === null) return { t: "e", v: EX_ERR_VALUE };
+	eq = op === "<" ? x < y : op === ">" ? x > y : op === "<=" ? x <= y : x >= y;
+	return { t: "b", v: eq };
+}
+
+function exFlat(args: ExVal[]): ExVal[] {
+	const out: ExVal[] = [];
+	for (const a of args) {
+		if (a.t === "arr") out.push(...a.v);
+		else out.push(a);
+	}
+	return out;
+}
+
+function exCall(name: string, args: ExVal[]): ExVal {
+	const fn = name.toUpperCase();
+	const flat = exFlat(args);
+	const nums: number[] = [];
+	for (const a of flat) {
+		if (a.t === "e") return a;
+		if (a.t === "n") nums.push(a.v);
+		else if (a.t !== "empty" && (fn === "COUNTA" || fn === "COUNT" || fn === "SUM" || fn === "AVERAGE" || fn === "MIN" || fn === "MAX" || fn === "PRODUCT")) {
+			if (a.t === "s" || a.t === "b") continue;
+			return { t: "e", v: EX_ERR_VALUE };
+		}
+	}
+	switch (fn) {
+		case "SUM": return { t: "n", v: nums.reduce((s, n) => s + n, 0) };
+		case "PRODUCT": return { t: "n", v: nums.reduce((s, n) => s * n, 1) };
+		case "AVERAGE":
+			if (nums.length === 0) return { t: "e", v: EX_ERR_DIV };
+			return { t: "n", v: nums.reduce((s, n) => s + n, 0) / nums.length };
+		case "MIN": return { t: "n", v: nums.length ? Math.min(...nums) : 0 };
+		case "MAX": return { t: "n", v: nums.length ? Math.max(...nums) : 0 };
+		case "COUNT": return { t: "n", v: nums.length };
+		case "COUNTA": return { t: "n", v: flat.filter((a) => a.t !== "empty").length };
+		case "ABS":
+		case "INT":
+		case "SQRT": {
+			if (args.length !== 1 || flat[0]?.t === "arr") return { t: "e", v: EX_ERR_VALUE };
+			const one = flat.length === 1 ? exToNumber(flat[0]) : null;
+			if (one === null || one === undefined) return { t: "e", v: EX_ERR_VALUE };
+			if (fn === "ABS") return { t: "n", v: Math.abs(one) };
+			if (fn === "INT") return { t: "n", v: Math.floor(one) };
+			if (one < 0) return { t: "e", v: EX_ERR_VALUE };
+			return { t: "n", v: Math.sqrt(one) };
+		}
+		case "ROUND":
+		case "MOD":
+		case "POWER": {
+			if (args.length !== 2) return { t: "e", v: EX_ERR_VALUE };
+			const x = exToNumber(flat[0]);
+			const y = exToNumber(flat[1]);
+			if (x === null || y === null) return { t: "e", v: EX_ERR_VALUE };
+			if (fn === "ROUND") {
+				const d = Math.trunc(y);
+				const f = Math.pow(10, d);
+				return { t: "n", v: Math.round(x * f) / f };
+			}
+			if (fn === "MOD") {
+				if (y === 0) return { t: "e", v: EX_ERR_DIV };
+				return { t: "n", v: x % y };
+			}
+			const v = Math.pow(x, y);
+			if (!Number.isFinite(v)) return { t: "e", v: EX_ERR_DIV };
+			return { t: "n", v };
+		}
+		case "IF": {
+			if (args.length < 2 || args.length > 3) return { t: "e", v: EX_ERR_VALUE };
+			return exTruth(args[0]) ? args[1] : (args[2] ?? { t: "b" as const, v: false });
+		}
+		case "AND": {
+			for (const a of args) {
+				if (a.t === "e") return a;
+				if (a.t === "arr") return { t: "e", v: EX_ERR_VALUE };
+			}
+			return { t: "b", v: args.every(exTruth) };
+		}
+		case "OR": {
+			for (const a of args) {
+				if (a.t === "e") return a;
+				if (a.t === "arr") return { t: "e", v: EX_ERR_VALUE };
+			}
+			return { t: "b", v: args.some(exTruth) };
+		}
+		case "NOT": {
+			if (args.length !== 1 || args[0].t === "arr") return { t: "e", v: EX_ERR_VALUE };
+			if (args[0].t === "e") return args[0];
+			return { t: "b", v: !exTruth(args[0]) };
+		}
+		case "LEN":
+		case "UPPER":
+		case "LOWER":
+		case "TRIM": {
+			if (args.length !== 1 || args[0].t === "arr") return { t: "e", v: EX_ERR_VALUE };
+			const s = exToText(args[0]);
+			if (s === null) return { t: "e", v: EX_ERR_VALUE };
+			if (fn === "LEN") return { t: "n", v: s.length };
+			if (fn === "UPPER") return { t: "s", v: s.toUpperCase() };
+			if (fn === "LOWER") return { t: "s", v: s.toLowerCase() };
+			return { t: "s", v: s.trim().replace(/\s+/g, " ") };
+		}
+		case "TODAY":
+		case "NOW": {
+			if (args.length !== 0) return { t: "e", v: EX_ERR_VALUE };
+			const d = new Date();
+			return { t: "s", v: fn === "TODAY" ? d.toLocaleDateString() : d.toLocaleString() };
+		}
+		default: return { t: "e", v: EX_ERR_NAME };
+	}
+}
+
+function exEvaluateFormula(body: string, lookup: (c: number, r: number) => ExVal): ExVal {
+	try {
+		return new ExParser(body, { lookup }).parse();
+	} catch (e) {
+		if (e instanceof ExParseError) return { t: "e", v: EX_ERR_NAME };
+		throw e;
+	}
+}
+
+const EXCEL_SHEET_KEY = EXCEL_KEY;
+
+function loadExcel(): { cells: [number, number, string, boolean, boolean, string][]; widths: number[] } | null {
+	try {
+		const raw = localStorage.getItem(EXCEL_SHEET_KEY);
+		if (!raw) return null;
+		const data = JSON.parse(raw);
+		if (!data || !Array.isArray(data.cells)) return null;
+		return {
+			cells: data.cells.filter((e: unknown[]) => Array.isArray(e)),
+			widths: Array.isArray(data.widths) ? data.widths.filter((w: unknown) => typeof w === "number") : [],
+		};
+	} catch {
+		return null;
+	}
+}
+
+function exDownload(filename: string, text: string, mime: string): void {
+	const blob = new Blob([text], { type: mime });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = filename;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exCsvCell(s: string): string {
+	return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exParseCsv(text: string): string[][] {
+	const rows: string[][] = [];
+	let row: string[] = [];
+	let cur = "";
+	let quoted = false;
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (quoted) {
+			if (ch === '"') {
+				if (text[i + 1] === '"') {
+					cur += '"';
+					i++;
+				} else {
+					quoted = false;
+				}
+			} else {
+				cur += ch;
+			}
+		} else if (ch === '"') {
+			quoted = true;
+		} else if (ch === ",") {
+			row.push(cur);
+			cur = "";
+		} else if (ch === "\n") {
+			row.push(cur);
+			rows.push(row);
+			row = [];
+			cur = "";
+		} else if (ch === "\r") {
+			continue;
+		} else {
+			cur += ch;
+		}
+	}
+	row.push(cur);
+	rows.push(row);
+	while (rows.length > 0 && rows[rows.length - 1].every((c) => c === "")) rows.pop();
+	return rows;
+}
+
+function exToolButton(html: string, title: string, onClick: () => void): HTMLButtonElement {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "w10-sheet-tool";
+	b.innerHTML = html;
+	b.title = title;
+	b.tabIndex = -1;
+	b.onclick = (e) => {
+		e.preventDefault();
+		onClick();
+	};
+	return b;
+}
+
+function buildExcelBody(body: HTMLDivElement): void {
+	body.classList.add("w10-body-flush");
+	const root = document.createElement("div");
+	root.className = "w10-sheet";
+
+	const cells = new Map<string, ExCell>();
+	const widths: number[] = [];
+	for (let c = 0; c < EX_COLS; c++) widths.push(96);
+	let anchor = { c: 0, r: 0 };
+	let focus = { c: 0, r: 0 };
+
+	const saved = loadExcel();
+	if (saved) {
+		for (const [c, r, raw, b, i, a] of saved.cells) {
+			if (typeof c !== "number" || typeof r !== "number" || typeof raw !== "string") continue;
+			if (!exInGrid(c, r) || raw === "") continue;
+			cells.set(exKey(c, r), {
+				raw,
+				bold: b === true ? true : undefined,
+				italic: i === true ? true : undefined,
+				align: a === "l" || a === "c" || a === "r" ? a : undefined,
+			});
+		}
+		for (let c = 0; c < Math.min(saved.widths.length, EX_COLS); c++) {
+			const w = saved.widths[c];
+			if (w >= 40 && w <= 400) widths[c] = w;
+		}
+	}
+
+	const persist = (): void => {
+		try {
+			const arr: [number, number, string, boolean, boolean, string][] = [];
+			for (const [k, cell] of cells) {
+				const [c, r] = k.split(":").map(Number);
+				arr.push([c, r, cell.raw, cell.bold === true, cell.italic === true, cell.align ?? ""]);
+			}
+			localStorage.setItem(EXCEL_SHEET_KEY, JSON.stringify({ v: 1, cells: arr, widths }));
+		} catch {
+			// Private mode / file:// — keep it in memory only.
+		}
+	};
+
+	const bar = document.createElement("div");
+	bar.className = "w10-sheet-bar";
+	const formularow = document.createElement("div");
+	formularow.className = "w10-sheet-formula";
+	const namebox = document.createElement("input");
+	namebox.className = "w10-sheet-name";
+	namebox.value = "A1";
+	namebox.spellcheck = false;
+	const fx = document.createElement("span");
+	fx.className = "w10-sheet-fx";
+	fx.textContent = "fx";
+	const fxinput = document.createElement("input");
+	fxinput.className = "w10-sheet-fxinput";
+	fxinput.spellcheck = false;
+	formularow.appendChild(namebox);
+	formularow.appendChild(fx);
+	formularow.appendChild(fxinput);
+
+	const gridwrap = document.createElement("div");
+	gridwrap.className = "w10-sheet-gridwrap";
+	gridwrap.tabIndex = 0;
+	const table = document.createElement("table");
+	table.className = "w10-sheet-table";
+	const colgroup = document.createElement("colgroup");
+	const rowheadCol = document.createElement("col");
+	rowheadCol.style.width = "44px";
+	colgroup.appendChild(rowheadCol);
+	const colEls: HTMLTableColElement[] = [];
+	for (let c = 0; c < EX_COLS; c++) {
+		const col = document.createElement("col");
+		col.style.width = `${widths[c]}px`;
+		colgroup.appendChild(col);
+		colEls.push(col);
+	}
+	table.appendChild(colgroup);
+	const thead = document.createElement("thead");
+	const headrow = document.createElement("tr");
+	const corner = document.createElement("th");
+	corner.className = "w10-sheet-corner";
+	headrow.appendChild(corner);
+	const colHeads: HTMLTableCellElement[] = [];
+	for (let c = 0; c < EX_COLS; c++) {
+		const th = document.createElement("th");
+		th.className = "w10-sheet-colhead";
+		th.dataset.c = String(c);
+		const label = document.createElement("span");
+		label.textContent = exColName(c);
+		th.appendChild(label);
+		const grip = document.createElement("div");
+		grip.className = "w10-sheet-resize";
+		grip.title = "Resize column";
+		th.appendChild(grip);
+		headrow.appendChild(th);
+		colHeads.push(th);
+	}
+	thead.appendChild(headrow);
+	table.appendChild(thead);
+	const tbody = document.createElement("tbody");
+	const tds: HTMLTableCellElement[][] = [];
+	const rowHeads: HTMLTableCellElement[] = [];
+	for (let r = 0; r < EX_ROWS; r++) {
+		const tr = document.createElement("tr");
+		const rh = document.createElement("th");
+		rh.className = "w10-sheet-rowhead";
+		rh.textContent = String(r + 1);
+		rh.dataset.r = String(r);
+		tr.appendChild(rh);
+		rowHeads.push(rh);
+		const row: HTMLTableCellElement[] = [];
+		for (let c = 0; c < EX_COLS; c++) {
+			const td = document.createElement("td");
+			td.className = "w10-sheet-cell";
+			td.dataset.c = String(c);
+			td.dataset.r = String(r);
+			tr.appendChild(td);
+			row.push(td);
+		}
+		tds.push(row);
+		tbody.appendChild(tr);
+	}
+	table.appendChild(tbody);
+	gridwrap.appendChild(table);
+	const editor = document.createElement("input");
+	editor.className = "w10-sheet-edit";
+	editor.style.display = "none";
+	editor.spellcheck = false;
+	gridwrap.appendChild(editor);
+
+	const status = document.createElement("div");
+	status.className = "w10-sheet-status";
+	const stats = document.createElement("span");
+	const dims = document.createElement("span");
+	dims.textContent = `Sheet1 · ${EX_COLS} × ${EX_ROWS}`;
+	status.appendChild(stats);
+	status.appendChild(dims);
+
+	const getCell = (c: number, r: number): ExCell | undefined => cells.get(exKey(c, r));
+
+	const evalCell = (c: number, r: number, seen: Set<string>): ExVal => {
+		if (!exInGrid(c, r)) return { t: "e", v: EX_ERR_REF };
+		const k = exKey(c, r);
+		if (seen.has(k)) return { t: "e", v: EX_ERR_CIRC };
+		const cell = cells.get(k);
+		if (!cell || cell.raw === "") return { t: "empty" };
+		const raw = cell.raw.trim();
+		if (!raw.startsWith("=")) {
+			if (/^(true|false)$/i.test(raw)) return { t: "b", v: raw[0].toLowerCase() === "t" };
+			if (raw !== "" && Number.isFinite(Number(raw))) return { t: "n", v: Number(raw) };
+			return { t: "s", v: cell.raw };
+		}
+		seen.add(k);
+		const v = exEvaluateFormula(raw.slice(1), {
+			lookup: (cc, rr) => evalCell(cc, rr, seen),
+		});
+		seen.delete(k);
+		return v;
+	};
+
+	const rangeBounds = (): { c0: number; r0: number; c1: number; r1: number } => ({
+		c0: Math.min(anchor.c, focus.c),
+		r0: Math.min(anchor.r, focus.r),
+		c1: Math.max(anchor.c, focus.c),
+		r1: Math.max(anchor.r, focus.r),
+	});
+
+	const paintSelection = (): void => {
+		const b = rangeBounds();
+		for (let r = 0; r < EX_ROWS; r++) {
+			for (let c = 0; c < EX_COLS; c++) {
+				const td = tds[r][c];
+				td.classList.toggle("w10-sheet-range", c >= b.c0 && c <= b.c1 && r >= b.r0 && r <= b.r1);
+				td.classList.toggle("w10-sheet-active", c === focus.c && r === focus.r);
+			}
+		}
+		for (let c = 0; c < EX_COLS; c++) colHeads[c].classList.toggle("w10-sheet-hl", c >= b.c0 && c <= b.c1);
+		for (let r = 0; r < EX_ROWS; r++) rowHeads[r].classList.toggle("w10-sheet-hl", r >= b.r0 && r <= b.r1);
+		const active = getCell(focus.c, focus.r);
+		namebox.value = exRefName(focus.c, focus.r);
+		if (document.activeElement !== fxinput) fxinput.value = active?.raw ?? "";
+		paintStatus();
+		syncFormatButtons();
+	};
+
+	const paintStatus = (): void => {
+		const b = rangeBounds();
+		let count = 0;
+		let sum = 0;
+		for (let r = b.r0; r <= b.r1; r++) {
+			for (let c = b.c0; c <= b.c1; c++) {
+				const v = evalCell(c, r, new Set());
+				if (v.t === "n") {
+					count++;
+					sum += v.v;
+				}
+			}
+		}
+		stats.textContent =
+			count > 0
+				? `Average: ${exDisplay({ t: "n", v: sum / count })}   Count: ${count}   Sum: ${exDisplay({ t: "n", v: sum })}`
+				: `Count: ${(b.c1 - b.c0 + 1) * (b.r1 - b.r0 + 1)}`;
+	};
+
+	const paintValues = (): void => {
+		for (let r = 0; r < EX_ROWS; r++) {
+			for (let c = 0; c < EX_COLS; c++) {
+				const td = tds[r][c];
+				const cell = cells.get(exKey(c, r));
+				td.classList.remove("w10-sheet-cellnum", "w10-sheet-bold", "w10-sheet-italic");
+				td.style.textAlign = "";
+				if (!cell || cell.raw === "") {
+					td.textContent = "";
+					continue;
+				}
+				const v = evalCell(c, r, new Set());
+				td.textContent = exDisplay(v);
+				if (v.t === "n") td.classList.add("w10-sheet-cellnum");
+				if (cell.bold) td.classList.add("w10-sheet-bold");
+				if (cell.italic) td.classList.add("w10-sheet-italic");
+				if (cell.align === "l") td.style.textAlign = "left";
+				else if (cell.align === "c") td.style.textAlign = "center";
+				else if (cell.align === "r") td.style.textAlign = "right";
+			}
+		}
+		paintSelection();
+		persist();
+	};
+
+	const setRaw = (c: number, r: number, raw: string): void => {
+		const k = exKey(c, r);
+		if (raw === "") {
+			const cur = cells.get(k);
+			if (!cur) return;
+			if (cur.bold || cur.italic || cur.align) cells.set(k, { ...cur, raw: "" });
+			else cells.delete(k);
+			return;
+		}
+		const cur = cells.get(k);
+		cells.set(k, { raw, bold: cur?.bold, italic: cur?.italic, align: cur?.align });
+	};
+
+	const jumpTo = (c: number, r: number): void => {
+		if (!exInGrid(c, r)) return;
+		anchor = { c, r };
+		focus = { c, r };
+		hideEditor();
+		paintSelection();
+		tds[r][c].scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	};
+
+	const offsetIn = (el: HTMLElement, stop: HTMLElement): { x: number; y: number } => {
+		let x = 0;
+		let y = 0;
+		let n: HTMLElement | null = el;
+		while (n && n !== stop) {
+			x += n.offsetLeft;
+			y += n.offsetTop;
+			n = n.offsetParent as HTMLElement | null;
+		}
+		return { x, y };
+	};
+
+	const hideEditor = (): void => {
+		editor.style.display = "none";
+	};
+
+	const editing = (): boolean => editor.style.display !== "none";
+
+	const startEdit = (initial?: string): void => {
+		const td = tds[focus.r][focus.c];
+		const p = offsetIn(td, gridwrap);
+		editor.style.display = "block";
+		editor.style.left = `${p.x - 1}px`;
+		editor.style.top = `${p.y - 1}px`;
+		editor.style.width = `${Math.max(td.offsetWidth + 1, 60)}px`;
+		editor.style.height = `${Math.max(td.offsetHeight + 1, 22)}px`;
+		const cur = getCell(focus.c, focus.r);
+		editor.value = initial ?? cur?.raw ?? "";
+		editor.focus();
+		if (initial === undefined) editor.select();
+	};
+
+	const commitEdit = (move?: { dc: number; dr: number }): void => {
+		if (!editing()) return;
+		const at = { ...focus };
+		setRaw(at.c, at.r, editor.value);
+		hideEditor();
+		paintValues();
+		if (move) {
+			const nc = Math.max(0, Math.min(EX_COLS - 1, at.c + move.dc));
+			const nr = Math.max(0, Math.min(EX_ROWS - 1, at.r + move.dr));
+			anchor = { c: nc, r: nr };
+			focus = { c: nc, r: nr };
+			paintSelection();
+		}
+		gridwrap.focus();
+	};
+
+	editor.addEventListener("keydown", (e) => {
+		e.stopPropagation();
+		if (e.key === "Enter") {
+			e.preventDefault();
+			commitEdit({ dc: 0, dr: e.shiftKey ? -1 : 1 });
+		} else if (e.key === "Tab") {
+			e.preventDefault();
+			commitEdit({ dc: e.shiftKey ? -1 : 1, dr: 0 });
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			hideEditor();
+			gridwrap.focus();
+		}
+	});
+	editor.addEventListener("blur", () => {
+		if (editing()) {
+			setRaw(focus.c, focus.r, editor.value);
+			hideEditor();
+			paintValues();
+		}
+	});
+
+	fxinput.addEventListener("keydown", (e) => {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			setRaw(focus.c, focus.r, fxinput.value);
+			paintValues();
+			gridwrap.focus();
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			fxinput.value = getCell(focus.c, focus.r)?.raw ?? "";
+			gridwrap.focus();
+		}
+	});
+
+	namebox.addEventListener("keydown", (e) => {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			const ref = exParseRef(namebox.value);
+			if (ref && exInGrid(ref.c, ref.r)) jumpTo(ref.c, ref.r);
+			else namebox.value = exRefName(focus.c, focus.r);
+			gridwrap.focus();
+		} else if (e.key === "Escape") {
+			namebox.value = exRefName(focus.c, focus.r);
+			gridwrap.focus();
+		}
+	});
+
+	const moveFocus = (dc: number, dr: number, extend: boolean): void => {
+		if (editing()) {
+			commitEdit({ dc, dr });
+			return;
+		}
+		const nc = Math.max(0, Math.min(EX_COLS - 1, focus.c + dc));
+		const nr = Math.max(0, Math.min(EX_ROWS - 1, focus.r + dr));
+		if (!extend) anchor = { c: nc, r: nr };
+		focus = { c: nc, r: nr };
+		paintSelection();
+		tds[nr][nc].scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	};
+
+	const clearRange = (): void => {
+		const b = rangeBounds();
+		for (let r = b.r0; r <= b.r1; r++) {
+			for (let c = b.c0; c <= b.c1; c++) setRaw(c, r, "");
+		}
+		hideEditor();
+		paintValues();
+	};
+
+	gridwrap.addEventListener("keydown", (e) => {
+		if (e.key === "ArrowUp") {
+			e.preventDefault();
+			moveFocus(0, -1, e.shiftKey);
+		} else if (e.key === "ArrowDown") {
+			e.preventDefault();
+			moveFocus(0, 1, e.shiftKey);
+		} else if (e.key === "ArrowLeft") {
+			e.preventDefault();
+			moveFocus(-1, 0, e.shiftKey);
+		} else if (e.key === "ArrowRight") {
+			e.preventDefault();
+			moveFocus(1, 0, e.shiftKey);
+		} else if (e.key === "Tab") {
+			e.preventDefault();
+			moveFocus(e.shiftKey ? -1 : 1, 0, false);
+		} else if (e.key === "Enter") {
+			e.preventDefault();
+			moveFocus(0, e.shiftKey ? -1 : 1, false);
+		} else if (e.key === "F2") {
+			e.preventDefault();
+			startEdit();
+		} else if (e.key === "Delete" || e.key === "Backspace") {
+			e.preventDefault();
+			clearRange();
+		} else if (e.key === "Escape") {
+			anchor = { ...focus };
+			paintSelection();
+		} else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			e.preventDefault();
+			startEdit(e.key);
+		} else if ((e.ctrlKey || e.metaKey) && (e.key === "b" || e.key === "B")) {
+			e.preventDefault();
+			toggleBold();
+		} else if ((e.ctrlKey || e.metaKey) && (e.key === "i" || e.key === "I")) {
+			e.preventDefault();
+			toggleItalic();
+		}
+	});
+
+	table.addEventListener("click", (e) => {
+		const target = e.target as HTMLElement;
+		if (target.closest(".w10-sheet-resize")) return;
+		const td = target.closest("td.w10-sheet-cell") as HTMLTableCellElement | null;
+		if (td) {
+			const c = Number(td.dataset.c);
+			const r = Number(td.dataset.r);
+			if (e.shiftKey) {
+				focus = { c, r };
+			} else {
+				anchor = { c, r };
+				focus = { c, r };
+			}
+			hideEditor();
+			paintSelection();
+			gridwrap.focus();
+			return;
+		}
+		const rh = target.closest("th.w10-sheet-rowhead") as HTMLElement | null;
+		if (rh) {
+			const r = Number(rh.dataset.r);
+			anchor = { c: 0, r };
+			focus = { c: EX_COLS - 1, r };
+			hideEditor();
+			paintSelection();
+			gridwrap.focus();
+			return;
+		}
+		const ch = target.closest("th.w10-sheet-colhead") as HTMLElement | null;
+		if (ch) {
+			const c = Number(ch.dataset.c);
+			anchor = { c, r: 0 };
+			focus = { c, r: EX_ROWS - 1 };
+			hideEditor();
+			paintSelection();
+			gridwrap.focus();
+			return;
+		}
+		if (target.closest("th.w10-sheet-corner")) {
+			anchor = { c: 0, r: 0 };
+			focus = { c: EX_COLS - 1, r: EX_ROWS - 1 };
+			hideEditor();
+			paintSelection();
+			gridwrap.focus();
+		}
+	});
+
+	table.addEventListener("dblclick", (e) => {
+		const td = (e.target as HTMLElement).closest("td.w10-sheet-cell") as HTMLTableCellElement | null;
+		if (!td) return;
+		anchor = { c: Number(td.dataset.c), r: Number(td.dataset.r) };
+		focus = { ...anchor };
+		paintSelection();
+		startEdit();
+	});
+
+	const applyWidths = (): void => {
+		for (let c = 0; c < EX_COLS; c++) colEls[c].style.width = `${widths[c]}px`;
+	};
+
+	table.addEventListener("pointerdown", (e) => {
+		const grip = (e.target as HTMLElement).closest(".w10-sheet-resize") as HTMLElement | null;
+		if (!grip) return;
+		const th = grip.parentElement as HTMLElement;
+		const c = Number(th.dataset.c);
+		const startX = e.clientX;
+		const startW = widths[c];
+		e.preventDefault();
+		const onMove = (ev: PointerEvent): void => {
+			widths[c] = Math.max(40, Math.min(400, startW + ev.clientX - startX));
+			applyWidths();
+		};
+		const onUp = (): void => {
+			document.removeEventListener("pointermove", onMove);
+			document.removeEventListener("pointerup", onUp);
+			persist();
+		};
+		document.addEventListener("pointermove", onMove);
+		document.addEventListener("pointerup", onUp);
+	});
+
+	const forEachRange = (fn: (cell: ExCell, c: number, r: number) => void): void => {
+		const b = rangeBounds();
+		for (let r = b.r0; r <= b.r1; r++) {
+			for (let c = b.c0; c <= b.c1; c++) {
+				const k = exKey(c, r);
+				let cell = cells.get(k);
+				if (!cell) {
+					cell = { raw: "" };
+					cells.set(k, cell);
+				}
+				fn(cell, c, r);
+			}
+		}
+		for (const [k, cell] of cells) {
+			if (cell.raw === "" && !cell.bold && !cell.italic && !cell.align) cells.delete(k);
+		}
+	};
+
+	const toggleBold = (): void => {
+		const cur = getCell(focus.c, focus.r)?.bold === true;
+		forEachRange((cell) => {
+			cell.bold = !cur ? true : undefined;
+		});
+		hideEditor();
+		paintValues();
+		gridwrap.focus();
+	};
+
+	const toggleItalic = (): void => {
+		const cur = getCell(focus.c, focus.r)?.italic === true;
+		forEachRange((cell) => {
+			cell.italic = !cur ? true : undefined;
+		});
+		hideEditor();
+		paintValues();
+		gridwrap.focus();
+	};
+
+	const setAlign = (a: "l" | "c" | "r"): void => {
+		const cur = getCell(focus.c, focus.r)?.align ?? "";
+		forEachRange((cell) => {
+			cell.align = cur === a ? undefined : a;
+		});
+		hideEditor();
+		paintValues();
+		gridwrap.focus();
+	};
+
+	const boldBtn = exToolButton("<b>B</b>", "Bold (Ctrl+B)", toggleBold);
+	const italicBtn = exToolButton("<i>I</i>", "Italic (Ctrl+I)", toggleItalic);
+	const alignL = exToolButton("&#9776;", "Align left", () => setAlign("l"));
+	const alignC = exToolButton("&#9777;", "Align center", () => setAlign("c"));
+	const alignR = exToolButton("&#9778;", "Align right", () => setAlign("r"));
+
+	const syncFormatButtons = (): void => {
+		const cur = getCell(focus.c, focus.r);
+		boldBtn.classList.toggle("w10-on", cur?.bold === true);
+		italicBtn.classList.toggle("w10-on", cur?.italic === true);
+		const a = cur?.align ?? "";
+		alignL.classList.toggle("w10-on", a === "l");
+		alignC.classList.toggle("w10-on", a === "c");
+		alignR.classList.toggle("w10-on", a === "r");
+	};
+
+	const fileInput = document.createElement("input");
+	fileInput.type = "file";
+	fileInput.accept = ".csv,text/csv,text/plain";
+	fileInput.style.display = "none";
+	fileInput.addEventListener("change", () => {
+		const f = fileInput.files?.[0];
+		fileInput.value = "";
+		if (!f) return;
+		const doImport = (): void => {
+			const rd = new FileReader();
+			rd.onload = () => {
+				const rows = exParseCsv(String(rd.result ?? ""));
+				cells.clear();
+				for (let r = 0; r < Math.min(rows.length, EX_ROWS); r++) {
+					const line = rows[r];
+					for (let c = 0; c < Math.min(line.length, EX_COLS); c++) {
+						if (line[c] !== "") cells.set(exKey(c, r), { raw: line[c] });
+					}
+				}
+				anchor = { c: 0, r: 0 };
+				focus = { c: 0, r: 0 };
+				paintValues();
+				gridwrap.focus();
+			};
+			rd.readAsText(f);
+		};
+		if (cells.size > 0) {
+			confirmWin10("Excel", "Replace the current sheet with the CSV?", { yes: "Replace", no: "Cancel" }, { theme: dark ? "dark" : "light" }).then((yes) => {
+				if (yes) doImport();
+			});
+		} else {
+			doImport();
+		}
+	});
+
+	bar.appendChild(w10Button("New", () => {
+		if (cells.size === 0) {
+			gridwrap.focus();
+			return;
+		}
+		confirmWin10("Excel", "Clear the current sheet?", { yes: "Clear", no: "Cancel" }, { theme: dark ? "dark" : "light" }).then((yes) => {
+			if (!yes) return;
+			cells.clear();
+			anchor = { c: 0, r: 0 };
+			focus = { c: 0, r: 0 };
+			paintValues();
+			gridwrap.focus();
+		});
+	}, true));
+	const importBtn = w10Button("Import", () => fileInput.click(), true);
+	bar.appendChild(importBtn);
+	bar.appendChild(w10Button("Export", () => {
+		let r1 = 0;
+		let c1 = 0;
+		for (const k of cells.keys()) {
+			const [c, r] = k.split(":").map(Number);
+			if (c > c1) c1 = c;
+			if (r > r1) r1 = r;
+		}
+		const lines: string[] = [];
+		for (let r = 0; r <= r1; r++) {
+			const line: string[] = [];
+			for (let c = 0; c <= c1; c++) {
+				const cell = cells.get(exKey(c, r));
+				line.push(cell ? exDisplay(evalCell(c, r, new Set())) : "");
+			}
+			lines.push(line.map(exCsvCell).join(","));
+		}
+		exDownload("sheet.csv", lines.join("\n"), "text/csv;charset=utf-8");
+	}, true));
+	const sep1 = document.createElement("div");
+	sep1.className = "w10-sheet-sep";
+	bar.appendChild(sep1);
+	bar.appendChild(boldBtn);
+	bar.appendChild(italicBtn);
+	const sep2 = document.createElement("div");
+	sep2.className = "w10-sheet-sep";
+	bar.appendChild(sep2);
+	bar.appendChild(alignL);
+	bar.appendChild(alignC);
+	bar.appendChild(alignR);
+	const sep3 = document.createElement("div");
+	sep3.className = "w10-sheet-sep";
+	bar.appendChild(sep3);
+	bar.appendChild(w10Button("Clear", () => {
+		clearRange();
+		gridwrap.focus();
+	}, true));
+
+	applyWidths();
+	root.appendChild(bar);
+	root.appendChild(formularow);
+	root.appendChild(gridwrap);
+	root.appendChild(status);
+	root.appendChild(fileInput);
+	body.appendChild(root);
+	paintValues();
+}
+
+const excelApp = desktop.createApp({
+	id: "excel",
+	label: "Excel",
+	appTitle: "Excel — excel.exe",
+	appIconHTML: ICON_SHEET,
+	titleHTML: `Excel <span class="w10-credit">excel.exe</span>`,
+	width: 900,
+	height: 620,
+	build: (body) => buildExcelBody(body),
+});
+
+// ---- App 9 : QxChat (chat-only, qxchat.ts in the browser) ----
+const qxchatApp = desktop.createApp({
+	id: "qxchat",
+	label: "QxChat",
+	appTitle: "QxChat — chat",
+	appIconHTML: ICON_COMMENT,
+	titleHTML: `QxChat <span class="w10-credit">chat</span>`,
+	width: 420,
+	height: 560,
+	build: (body) => buildQxChatBody(body),
+});
+
 // ---- Desktop icons (double-click to open) ----
 desktop.setDesktopIcons([
 	{ id: "about", label: "About", iconHTML: WIN10_LOGO, onOpen: () => about.focus() },
 	{ id: "notepad", label: "Notepad", iconHTML: ICON_NOTEPAD, onOpen: () => notepad.focus() },
 	{ id: "paint", label: "Paint", iconHTML: ICON_PHOTO, onOpen: () => paintApp.focus() },
+	{ id: "qxchat", label: "QxChat", iconHTML: ICON_COMMENT, onOpen: () => qxchatApp.focus() },
+	{ id: "excel", label: "Excel", iconHTML: ICON_SHEET, onOpen: () => excelApp.focus() },
 	{ id: "settings", label: "Settings", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() },
 	{ id: "components", label: "Components", iconHTML: ICON_SETTINGS, onOpen: () => gallery.focus() },
 	{ id: "calendar", label: "Calendar", iconHTML: ICON_CALENDAR, onOpen: () => calendarApp.focus() },
@@ -2027,6 +3963,8 @@ desktop.setDesktopIcons([
 	startMenu.registerApp({ id: "widgets", label: "Widgets", iconHTML: ICON_GRID, onOpen: () => widgetsApp.focus() });
 	startMenu.registerApp({ id: "notepad", label: "Notepad", iconHTML: ICON_NOTEPAD, onOpen: () => notepad.focus() });
 	startMenu.registerApp({ id: "paint", label: "Paint", iconHTML: ICON_PHOTO, onOpen: () => paintApp.focus() });
+	startMenu.registerApp({ id: "qxchat", label: "QxChat", iconHTML: ICON_COMMENT, onOpen: () => qxchatApp.focus() });
+	startMenu.registerApp({ id: "excel", label: "Excel", iconHTML: ICON_SHEET, onOpen: () => excelApp.focus() });
 
 	console.log("[demo] accent API: desktop.setAccent('#e81123'), desktop.setTheme('dark')");
 
@@ -2052,6 +3990,12 @@ function openDemoMenu(x: number, y: number): void {
 			const openPaint = w10MenuItem("Open Paint", "paint.exe");
 			openPaint.onclick = () => paintApp.focus();
 			menu.appendChild(openPaint);
+			const openQxChat = w10MenuItem("Open QxChat", "chat");
+			openQxChat.onclick = () => qxchatApp.focus();
+			menu.appendChild(openQxChat);
+			const openExcel = w10MenuItem("Open Excel", "excel.exe");
+			openExcel.onclick = () => excelApp.focus();
+			menu.appendChild(openExcel);
 			menu.appendChild(w10Separator());
 			const red = w10MenuItem("Red accent", "broadcast to shell");
 			red.onclick = () => desktop.setAccent("#e81123");

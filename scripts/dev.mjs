@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, watch } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { demoBuildOptions } from "./esbuild.demo.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(root, "package.json"));
@@ -34,12 +35,7 @@ watch(cssSrc, { persistent: true }, (event) => {
 });
 
 const ctx = await esbuild.context({
-	entryPoints: [join(root, "demo", "main.ts")],
-	bundle: true,
-	format: "iife",
-	outfile: join(root, "demo", "dist", "demo.js"),
-	sourcemap: true,
-	logLevel: "info",
+	...demoBuildOptions(root, { minify: false, sourcemap: true }),
 });
 await ctx.watch();
 let port = PORT;
