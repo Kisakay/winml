@@ -1,28 +1,60 @@
 // Demo app: proves win10ml runs anywhere with zero dependencies.
 // No Tidal, no framework — plain DOM + the published ESM bundle.
 import {
+	ICON_BELL,
+	ICON_BLUETOOTH,
 	ICON_CALENDAR,
+	ICON_CAMERA,
+	ICON_CART,
 	ICON_CHECK,
 	ICON_CLOCK,
+	ICON_CODE,
+	ICON_COPY,
+	ICON_CUT,
 	ICON_EDIT,
 	ICON_FILE,
+	ICON_FILE_ADD,
+	ICON_FILTER,
 	ICON_FOLDER,
+	ICON_FOLDER_OPEN,
+	ICON_GAMEPAD,
+	ICON_GRID,
+	ICON_HEADPHONES,
 	ICON_HEART,
+	ICON_HELP,
 	ICON_HOME,
+	ICON_LIKE,
+	ICON_LIST,
+	ICON_LOCATION,
 	ICON_MAIL,
+	ICON_MENU,
+	ICON_MIC,
+	ICON_MORE,
 	ICON_MUSIC,
+	ICON_NEW_FOLDER,
+	ICON_PASTE,
 	ICON_PAUSE,
+	ICON_PHONE,
+	ICON_PIN,
 	ICON_PLAY,
+	ICON_PRINT,
 	ICON_REFRESH,
 	ICON_SAVE,
 	ICON_SEARCH,
+	ICON_SEND,
 	ICON_SETTINGS,
+	ICON_SHARE,
 	ICON_SHIELD,
+	ICON_SHUFFLE,
 	ICON_STAR,
+	ICON_SUN,
 	ICON_TRASH,
+	ICON_UPLOAD,
 	ICON_USER,
+	ICON_VIDEO,
 	ICON_VOLUME,
 	ICON_WIFI,
+	ICON_ZOOM_IN,
 	WIN10_LOGO,
 	DOWNLOAD_ICON,
 	GLOBE_ICON,
@@ -54,6 +86,27 @@ import {
 	w10Switch,
 	w10TextareaRow,
 	w10Toggle,
+	showW10Flyout,
+	w10Avatar,
+	w10Badge,
+	w10Breadcrumb,
+	w10ColorGrid,
+	w10CommandBar,
+	w10EmptyState,
+	w10Expander,
+	w10InfoBar,
+	w10Link,
+	w10NumberRow,
+	w10PasswordRow,
+	w10Pivot,
+	w10Rating,
+	w10SearchBox,
+	w10Segmented,
+	w10Spinner,
+	w10Table,
+	w10Tile,
+	w10Tree,
+	w10WithTooltip,
 	type DesktopApp,
 } from "../src/index.js";
 
@@ -91,13 +144,15 @@ startMenu = new Win10StartMenu({
 		},
 	},
 });
+// Keep the Start menu on the desktop theme/accent broadcast.
+desktop.attachStartMenu(startMenu);
 
 // ---- App 1 : About (markdown + links) ----
 const about = desktop.createApp({
 	id: "about",
 	label: "About",
 	appTitle: "About this demo",
-	appIconHTML: WIN10_LOGO,
+	appIconHTML: ICON_HELP,
 	titleHTML: `About <span class="w10-credit">win10ml demo</span>`,
 	width: 420,
 	height: 480,
@@ -135,6 +190,7 @@ settingsApp.body.appendChild(
 	w10Toggle("Dark theme", "Dark mode for every window at once", () => dark, (v) => {
 		dark = v;
 		desktop.setTheme(v ? "dark" : "light");
+		calHandle?.setTheme(v ? "dark" : "light");
 	}),
 );
 settingsApp.body.appendChild(w10GroupTitle("Content"));
@@ -321,6 +377,7 @@ gallery.body.appendChild(pinRow);
 
 // ---- App 4 : Calendar (lazy build = content driven by its application) ----
 // Starts unpinned: no taskbar button until opened from the Start menu.
+let calHandle: ReturnType<typeof w10Calendar> | null = null;
 const calendarApp = desktop.createApp({
 	id: "calendar",
 	label: "Calendar",
@@ -332,13 +389,13 @@ const calendarApp = desktop.createApp({
 	pinned: false,
 	build: (body) => {
 		const picked = w10Desc("No date picked yet.");
-		const cal = w10Calendar({
+		calHandle = w10Calendar({
 			dark,
 			onPick: (d) => {
 				picked.textContent = `Picked: ${d.toLocaleDateString()}`;
 			},
 		});
-		body.appendChild(cal.el);
+		body.appendChild(calHandle.el);
 		body.appendChild(picked);
 	},
 });
@@ -380,11 +437,149 @@ const navApp = desktop.createApp({
 	paintNavBody("home");
 }
 
-	startMenu.registerApp({ id: "about", label: "About", iconHTML: WIN10_LOGO, onOpen: () => about.focus() });
+// ---- App 6 : Widgets batch 2 (expander, pivot, infobar, tiles, tree, table, rating...) ----
+const widgetsApp = desktop.createApp({
+	id: "widgets",
+	label: "Widgets",
+	appTitle: "Win10 widgets batch 2",
+	appIconHTML: ICON_GRID,
+	titleHTML: `Widgets <span class="w10-credit">batch 2</span>`,
+	width: 520,
+	height: 620,
+});
+{
+	let stars = 4;
+	let qty = 2;
+	let pwd = "";
+	let view: "list" | "grid" = "list";
+	let accentPick = "#0078d7";
+	widgetsApp.body.appendChild(w10GroupTitle("InfoBar"));
+	widgetsApp.body.appendChild(w10InfoBar({ severity: "info", title: "Update ready", message: "Restart to apply the new accent color." }));
+	widgetsApp.body.appendChild(w10InfoBar({ severity: "warning", title: "Battery saver", message: "Some animations are paused." }));
+	widgetsApp.body.appendChild(w10GroupTitle("Pivot"));
+	const pivot = w10Pivot(
+		[
+			{ id: "home", label: "Home" },
+			{ id: "apps", label: "Apps" },
+			{ id: "about", label: "About" },
+		] as { id: string; label: string }[],
+		"home",
+		(id) => {
+			pivot.body.innerHTML = "";
+			pivot.body.appendChild(w10Desc(`Pivot section: ${id}. Content is lazy like a real Win10 pivot.`));
+		},
+	);
+	pivot.body.appendChild(w10Desc("Pivot section: home. Content is lazy like a real Win10 pivot."));
+	widgetsApp.body.appendChild(pivot.el);
+	widgetsApp.body.appendChild(w10GroupTitle("Expander"));
+	const exp = w10Expander("Advanced options", { desc: "Rarely used switches live here.", iconHTML: ICON_SETTINGS });
+	exp.body.appendChild(w10Desc("This body collapses like the Win10 Settings expander."));
+	widgetsApp.body.appendChild(exp.el);
+	widgetsApp.body.appendChild(w10GroupTitle("Search + breadcrumb + badges"));
+	const search = w10SearchBox({ placeholder: "Search apps…", onInput: (v) => console.log("[demo] search =", v) });
+	widgetsApp.body.appendChild(search.el);
+	widgetsApp.body.appendChild(w10Breadcrumb([{ label: "Home" }, { label: "Apps" }, { label: "Widgets" }]));
+	const badgeRow = document.createElement("div");
+	badgeRow.className = "w10-toolbar";
+	badgeRow.appendChild(w10Avatar({ name: "Demo User" }));
+	badgeRow.appendChild(w10Badge(3));
+	badgeRow.appendChild(w10Badge("NEW", { tone: "neutral" }));
+	badgeRow.appendChild(w10Badge("!", { tone: "alert" }));
+	widgetsApp.body.appendChild(badgeRow);
+	widgetsApp.body.appendChild(w10GroupTitle("CommandBar + tiles"));
+	widgetsApp.body.appendChild(
+		w10CommandBar([
+			{ id: "copy", label: "Copy", iconHTML: ICON_COPY, onClick: () => console.log("[demo] copy") },
+			{ id: "paste", label: "Paste", iconHTML: ICON_PASTE, onClick: () => console.log("[demo] paste") },
+			{ id: "share", label: "Share", iconHTML: ICON_SHARE, onClick: () => console.log("[demo] share") },
+		]),
+	);
+	const tileRow = document.createElement("div");
+	tileRow.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+	tileRow.appendChild(w10Tile({ title: "Music", iconHTML: ICON_MUSIC, size: "medium", onClick: () => about.focus() }));
+	tileRow.appendChild(w10Tile({ title: "Photos", iconHTML: ICON_CAMERA, size: "medium", accent: "#107c10" }));
+	tileRow.appendChild(w10Tile({ title: "Store", iconHTML: ICON_CART, size: "wide", accent: "#5c2d91" }));
+	widgetsApp.body.appendChild(tileRow);
+	widgetsApp.body.appendChild(w10GroupTitle("Number + password + segmented + colors"));
+	widgetsApp.body.appendChild(w10NumberRow("Quantity", "Win10 spinbox with stepper.", { min: 0, max: 10, get: () => qty, set: (v) => (qty = v) }));
+	widgetsApp.body.appendChild(w10PasswordRow("Password", "Reveal eye like Win10 login.", { get: () => pwd, set: (v) => (pwd = v) }).el);
+	const seg = w10Segmented(
+		[
+			{ value: "list", label: "List" },
+			{ value: "grid", label: "Grid" },
+		],
+		() => view,
+		(v) => (view = v),
+	);
+	widgetsApp.body.appendChild(seg.el);
+	const grid = w10ColorGrid(["#0078d7", "#107c10", "#e81123", "#5c2d91", "#ca5010"], () => accentPick, (v) => {
+		accentPick = v;
+		desktop.setAccent(v);
+	});
+	widgetsApp.body.appendChild(grid.el);
+	widgetsApp.body.appendChild(w10GroupTitle("Rating + spinner + tree + table"));
+	const rating = w10Rating({ value: stars, onRate: (v) => (stars = v) });
+	widgetsApp.body.appendChild(rating.el);
+	widgetsApp.body.appendChild(w10Spinner({ label: "Loading…" }));
+	const tree = w10Tree(
+		[
+			{ id: "docs", label: "Documents", iconHTML: ICON_FOLDER, children: [{ id: "notes", label: "Notes", iconHTML: ICON_FILE }] },
+			{ id: "pics", label: "Pictures", iconHTML: ICON_FOLDER_OPEN, children: [{ id: "cam", label: "Camera Roll", iconHTML: ICON_CAMERA }] },
+		],
+		{ onSelect: (id) => console.log("[demo] tree =", id) },
+	);
+	widgetsApp.body.appendChild(tree.el);
+	const table = w10Table(["Name", "Size", "Type"], [["Notes.txt", "2 KB", "Text"], ["Photo.jpg", "1.2 MB", "Image"]]);
+	widgetsApp.body.appendChild(table.el);
+	widgetsApp.body.appendChild(w10GroupTitle("Empty state + link + tooltip + flyout"));
+	widgetsApp.body.appendChild(w10EmptyState({ iconHTML: ICON_FOLDER, title: "Nothing here yet", message: "Add files to get started." }));
+	const linkRow = document.createElement("div");
+	linkRow.className = "w10-toolbar";
+	const docs = w10Link("Learn more", () => console.log("[demo] link"));
+	w10WithTooltip(docs, "Opens the documentation");
+	linkRow.appendChild(docs);
+	const flyBtn = w10Button("Flyout…", (e) => {
+		showW10Flyout(e.target as HTMLElement, (fly) => {
+			fly.textContent = "Anchored Win10 flyout (light-dismiss, Escape closes).";
+		}, { dark: dark });
+	});
+	linkRow.appendChild(flyBtn);
+	const pinBtn2 = w10Button("Pin test", () => console.log("[demo] pin", ICON_PIN.length > 0));
+	w10WithTooltip(pinBtn2, "More new icons: bluetooth, mic, video, filter…");
+	linkRow.appendChild(pinBtn2);
+	widgetsApp.body.appendChild(linkRow);
+	widgetsApp.body.appendChild(w10GroupTitle("New icons (extended MDL2 pack)"));
+	const wall2 = document.createElement("div");
+	wall2.style.display = "flex";
+	wall2.style.flexWrap = "wrap";
+	wall2.style.gap = "6px";
+	for (const [icon, name] of [
+		[ICON_BELL, "Bell"], [ICON_BLUETOOTH, "Bluetooth"], [ICON_CAMERA, "Camera"], [ICON_CART, "Cart"],
+		[ICON_CODE, "Code"], [ICON_COPY, "Copy"], [ICON_PASTE, "Paste"], [ICON_CUT, "Cut"],
+		[ICON_FILE_ADD, "FileAdd"], [ICON_FILTER, "Filter"], [ICON_FOLDER_OPEN, "FolderOpen"],
+		[ICON_NEW_FOLDER, "NewFolder"], [ICON_GAMEPAD, "Gamepad"], [ICON_GRID, "Grid"],
+		[ICON_HEADPHONES, "Headphones"], [ICON_LIKE, "Like"], [ICON_LIST, "List"],
+		[ICON_LOCATION, "Location"], [ICON_MENU, "Menu"], [ICON_MORE, "More"],
+		[ICON_MIC, "Mic"], [ICON_PHONE, "Phone"], [ICON_PIN, "Pin"],
+		[ICON_PRINT, "Print"], [ICON_SEND, "Send"], [ICON_SHARE, "Share"],
+		[ICON_SHUFFLE, "Shuffle"], [ICON_SUN, "Sun"], [ICON_UPLOAD, "Upload"],
+		[ICON_VIDEO, "Video"], [ICON_ZOOM_IN, "ZoomIn"],
+	] as [string, string][]) {
+		const cell = document.createElement("span");
+		cell.title = name;
+		cell.style.cssText = "display:inline-flex;padding:6px;border:1px solid #e1e1e1;color:var(--w10-accent,#0078d7)";
+		cell.innerHTML = icon;
+		wall2.appendChild(cell);
+	}
+	widgetsApp.body.appendChild(wall2);
+}
+
+	startMenu.registerApp({ id: "about", label: "About", iconHTML: ICON_HELP, onOpen: () => about.focus() });
 	startMenu.registerApp({ id: "settings", label: "Settings demo", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() });
 	startMenu.registerApp({ id: "components", label: "Components", iconHTML: ICON_SETTINGS, onOpen: () => gallery.focus() });
 	startMenu.registerApp({ id: "calendar", label: "Calendar", iconHTML: ICON_CALENDAR, onOpen: () => calendarApp.focus() });
 	startMenu.registerApp({ id: "nav", label: "Navigation", iconHTML: ICON_HOME, onOpen: () => navApp.focus() });
+	startMenu.registerApp({ id: "widgets", label: "Widgets", iconHTML: ICON_GRID, onOpen: () => widgetsApp.focus() });
 
 	console.log("[demo] accent API: desktop.setAccent('#e81123'), desktop.setTheme('dark')");
 

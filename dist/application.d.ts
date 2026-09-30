@@ -57,5 +57,7 @@ export declare class Win10Application {
     setAccent(accent: string): void;
     destroy(): void;
     private bringToFront;
+    /** Run the lazy build once, whatever entry point shows the window. */
+    private ensureBuilt;
     private sync;
 }

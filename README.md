@@ -29,6 +29,7 @@ about.show();
 ```
 
 Run the local demo: `npm run build && npm run demo` (http://localhost:8080).
+Work on the demo with live rebuild: `npm run dev` (or `bun run dev`, same URL, esbuild watch + serve, no cache).
 
 ## API
 
@@ -45,7 +46,7 @@ Builds the whole environment: taskbar + window manager + theme broadcast.
 | `clock`     | `{ onClick?, intervalMs? } \| false` | Taskbar clock. `false` hides it                            |
 | `taskbarId` | `string`                             | DOM id of the taskbar (default `"w10-taskbar"`)            |
 
-Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to every window), `setStatus(html | null)` (taskbar status text), `setStartOpen`, `destroy`.
+Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to every window + attached Start menu), `setStatus(html | null)` (taskbar status text), `setStartOpen`, `attachStartMenu(menu)` (sync a standalone Start menu with the shell theme/accent), `destroy`.
 
 ### `desktop.createApp(opts): DesktopApp`
 
@@ -106,14 +107,15 @@ menu.registerApp({ id: "main", label: "My app", iconHTML: MY_ICON, onOpen: () =>
 startButton.onclick = () => menu.toggle();
 ```
 - Controls: `w10Button`, `w10Toggle` (checkbox), `w10Switch` (toggle switch), `w10RadioGroup`, `w10TextRow`, `w10TextareaRow`, `w10ComboRow`, `w10Slider`, `w10Progress` (determinate + indeterminate), `w10ListItem`, `w10Hero`, `w10GroupTitle`, `w10Desc`, `w10Divider`.
-- `w10Calendar` — month grid + nav + today footer + date picking.
+- Widgets batch 2: `w10Expander`, `w10Pivot`, `w10InfoBar` (info/success/warning/error), `w10Avatar` (PersonPicture), `w10Badge`, `w10SearchBox`, `w10NumberRow` (spinbox), `w10PasswordRow` (reveal), `w10Tile` (small/medium/wide/large), `w10CommandBar`, `w10Tree`, `w10Table` (DetailsList), `w10Rating`, `w10Breadcrumb`, `showW10Flyout`, `w10Segmented`, `w10ColorGrid`, `w10EmptyState`, `w10Spinner` (ProgressRing), `w10Link`, `w10WithTooltip`.
+- `w10Calendar` — month grid + nav + today footer + date picking (`setTheme` follows later theme switches).
 - MessageBox: `showWin10MsgBox`, `confirmWin10` (official system icons, modal, Enter/Escape).
 - Menus: `showWin10Menu`, `w10MenuItem`, `w10MenuHeader`, `w10Separator`, `closeWin10Menu`.
 - `renderMarkdown(md)` — `#/##/###`, `**bold**`, `*italic*`, `` `code` ``, `[text](url)`, `- lists`, `---`.
 
 ### Official icon pack
 
-Win10 logo, Segoe MDL2 glyphs (back/forward, chevrons, arrows, check/plus/minus, play/pause/stop, volume, music, search, refresh, save, trash, edit, folder, file, home, star, heart, user, lock, calendar, clock, mail, shield, power, wifi, battery, settings, globe…), caption glyphs, `INFO_ICON`, and the 32px system icons `MSGBOX_INFO/WARNING/ERROR/QUESTION`. All inline SVG, `currentColor` where it makes sense (accent-tinted), zero network.
+Win10 logo, ~120 Segoe MDL2 glyphs (back/forward, chevrons, arrows, check/plus/minus, play/pause/stop/skip/repeat/shuffle, volume/mute, music/video/photo/camera/mic, search/zoom, refresh/update, save, trash, edit, copy/paste/cut, folder/file (+open/new/add), home, star/favorite, heart, like/dislike, user/contact/group, lock/key, calendar, clock/history, mail/phone/comment, share/send/link/attach, shield, power, wifi/ethernet/bluetooth, battery, settings, globe/location/map/compass, info/warn/error/success, bell, pin/unpin, menu/more/list/grid/dashboard/taskview, sort/filter, print/scan, cloud/upload, calculator/notepad/terminal/code/bug, gift/trophy/gamepad/cart, keyboard/mouse/monitor/laptop/tablet/tv/headphones, moon/sun, cortana…), caption glyphs, `INFO_ICON`, and the 32px system icons `MSGBOX_INFO/WARNING/ERROR/QUESTION`. All inline SVG, `currentColor` where it makes sense (accent-tinted), zero network. Dynamic lookup via `ICONS` / `getWin10Icon(name)` / `w10Icon(name)` (`Win10IconName`).
 
 ## Stylesheet
 

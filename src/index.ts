@@ -13,3 +13,4 @@ export * from "./markdown.js";
 export * from "./calendar.js";
 export * from "./msgbox.js";
 export * from "./startmenu.js";
+export * from "./widgets.js";

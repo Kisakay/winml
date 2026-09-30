@@ -86,6 +86,12 @@ export interface Win10Desktop {
 	setAccent: (accent: string) => void;
 	setStatus: (html: string | null) => void;
 	setStartOpen: (open: boolean) => void;
+	/**
+	 * Attach a standalone Start menu to the shell: it is synced with the
+	 * current theme/accent immediately, then follows setTheme/setAccent.
+	 * The caller keeps ownership (desktop.destroy() won't destroy it).
+	 */
+	attachStartMenu: (menu: Win10StartMenu) => void;
 	destroy: () => void;
 }
 
@@ -98,6 +104,7 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 	let theme: Win10Theme = opts.theme ?? "light";
 	let accent = opts.accent ?? DEFAULT_ACCENT;
 	let destroyed = false;
+	let startMenu: Win10StartMenu | null = null;
 	const apps = new Map<string, DesktopApp>();
 
 	const taskbar = new Win10Taskbar(opts.taskbarId ?? "w10-taskbar");
@@ -185,6 +192,7 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 		setTheme: (t: Win10Theme) => {
 			theme = t;
 			for (const app of apps.values()) app.window.setTheme(t);
+			startMenu?.setTheme(t);
 		},
 
 		setAccent: (a: string) => {
@@ -192,6 +200,7 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 			accent = a;
 			taskbar.setAccent(a);
 			for (const app of apps.values()) app.window.setAccent(a);
+			startMenu?.setAccent(a);
 		},
 
 		setStatus: (html: string | null) => {
@@ -200,6 +209,12 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 
 		setStartOpen: (open: boolean) => {
 			taskbar.setStartOpen(open);
+		},
+
+		attachStartMenu: (menu: Win10StartMenu) => {
+			startMenu = menu;
+			menu.setTheme(theme);
+			menu.setAccent(accent);
 		},
 
 		destroy: () => {

@@ -12,7 +12,7 @@ copyFileSync(join(root, "demo", "dist", "demo.js"), join(docs, "demo.js"));
 copyFileSync(join(root, "dist", "win10-shell.css"), join(docs, "win10-shell.css"));
 
 const html = readFileSync(join(root, "demo", "index.html"), "utf-8")
-	.replace("../dist/win10-shell.css", "./win10-shell.css")
+	.replace("./dist/win10-shell.css", "./win10-shell.css")
 	.replace("./dist/demo.js", "./demo.js");
 writeFileSync(join(docs, "index.html"), html);
 

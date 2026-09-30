@@ -1,6 +1,8 @@
 // Official Win10 style calendar flyout content: month grid + nav + today footer.
 // Pure DOM. Used by taskbar clocks, date pickers, About pages...
 
+import type { Win10Theme } from "./window.js";
+
 export interface W10CalendarOptions {
 	value?: Date;
 	/** BCP47 tag for month/day names (default runtime locale). */
@@ -15,6 +17,7 @@ export interface W10CalendarOptions {
 export interface W10Calendar {
 	el: HTMLDivElement;
 	setValue: (d: Date) => void;
+	setTheme: (theme: Win10Theme) => void;
 	sync: () => void;
 }
 
@@ -148,6 +151,9 @@ export function w10Calendar(opts: W10CalendarOptions = {}): W10Calendar {
 			year = d.getFullYear();
 			month = d.getMonth();
 			paint();
+		},
+		setTheme: (theme: Win10Theme) => {
+			cal.classList.toggle("w10-dark", theme === "dark");
 		},
 		sync: paint,
 	};

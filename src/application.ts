@@ -112,10 +112,7 @@ export class Win10Application {
 	/** Launch the app: build content once, show, focus, mark running. Single-instance. */
 	launch(): void {
 		if (this.destroyed) return;
-		if (!this.built) {
-			this.built = true;
-			this.opts.build?.(this.window.body, this);
-		}
+		this.ensureBuilt();
 		this.running = true;
 		this.window.show();
 		this.bringToFront();
@@ -132,6 +129,7 @@ export class Win10Application {
 
 	show(): void {
 		if (this.destroyed) return;
+		this.ensureBuilt();
 		this.window.show();
 		this.bringToFront();
 		this.sync();
@@ -155,6 +153,7 @@ export class Win10Application {
 
 	focus(): void {
 		if (this.destroyed) return;
+		this.ensureBuilt();
 		if (!this.window.shown) this.window.show();
 		this.bringToFront();
 		this.sync();
@@ -222,6 +221,13 @@ export class Win10Application {
 
 	private bringToFront(): void {
 		this.window.setZIndex(++zTop);
+	}
+
+	/** Run the lazy build once, whatever entry point shows the window. */
+	private ensureBuilt(): void {
+		if (this.built) return;
+		this.built = true;
+		this.opts.build?.(this.window.body, this);
 	}
 
 	private sync(): void {

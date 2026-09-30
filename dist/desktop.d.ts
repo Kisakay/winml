@@ -67,6 +67,12 @@ export interface Win10Desktop {
     setAccent: (accent: string) => void;
     setStatus: (html: string | null) => void;
     setStartOpen: (open: boolean) => void;
+    /**
+     * Attach a standalone Start menu to the shell: it is synced with the
+     * current theme/accent immediately, then follows setTheme/setAccent.
+     * The caller keeps ownership (desktop.destroy() won't destroy it).
+     */
+    attachStartMenu: (menu: Win10StartMenu) => void;
     destroy: () => void;
 }
 export declare function isValidAccent(v: string): boolean;

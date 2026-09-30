@@ -1,3 +1,4 @@
+import type { Win10Theme } from "./window.js";
 export interface W10CalendarOptions {
     value?: Date;
     /** BCP47 tag for month/day names (default runtime locale). */
@@ -11,6 +12,7 @@ export interface W10CalendarOptions {
 export interface W10Calendar {
     el: HTMLDivElement;
     setValue: (d: Date) => void;
+    setTheme: (theme: Win10Theme) => void;
     sync: () => void;
 }
 export declare function w10Calendar(opts?: W10CalendarOptions): W10Calendar;

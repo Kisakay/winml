@@ -1491,3 +1491,139 @@ hr.w10-md-hr {
 	border: 2px solid var(--w10-accent, #0078d7);
 	padding: 4px 19px;
 }
+
+/* ================= Batch 2 widgets: expander / pivot / infobar / avatar / badge / search / number / tiles / commandbar / tree / table / rating / breadcrumb / flyout / segmented / colors / empty / spinner / link / tooltip ================= */
+.w10-win .w10-expander { border: 1px solid #e1e1e1; margin: 8px 0; }
+.w10-win .w10-expander-head { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: transparent; color: inherit; font-family: inherit; text-align: left; padding: 10px 12px; cursor: pointer; }
+.w10-win .w10-expander-head:hover { background: #f3f3f3; }
+.w10-win .w10-expander-chev { display: inline-flex; color: #605e5c; }
+.w10-win .w10-expander-chev svg { display: block; }
+.w10-win .w10-expander-icon { display: inline-flex; color: var(--w10-accent, #0078d7); }
+.w10-win .w10-expander-texts { display: flex; flex-direction: column; gap: 1px; }
+.w10-win .w10-expander-body { padding: 4px 12px 12px 34px; border-top: 1px solid #f0f0f0; }
+.w10-win .w10-pivot-head { display: flex; gap: 18px; border-bottom: 1px solid #e1e1e1; margin-bottom: 10px; }
+.w10-win .w10-pivot-tab { border: none; background: transparent; color: #767676; font-family: inherit; font-size: 15px; font-weight: 300; padding: 6px 2px 8px; cursor: pointer; }
+.w10-win .w10-pivot-tab:hover { color: #000; }
+.w10-win .w10-pivot-tab.w10-active { color: #000; font-weight: 600; box-shadow: inset 0 -2px 0 var(--w10-accent, #0078d7); }
+.w10-win .w10-infobar { display: flex; align-items: flex-start; gap: 10px; border-left: 3px solid var(--w10-accent, #0078d7); background: #f3f3f3; padding: 10px 12px; margin: 8px 0; }
+.w10-win .w10-infobar-icon { font-size: 14px; line-height: 1.4; }
+.w10-win .w10-infobar-texts { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.w10-win .w10-infobar-title { font-size: 13px; font-weight: 600; }
+.w10-win .w10-infobar-msg { font-size: 12px; color: #605e5c; }
+.w10-win .w10-infobar-close { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 11px; padding: 2px 6px; }
+.w10-win .w10-infobar-close:hover { background: #e1e1e1; }
+.w10-win .w10-infobar-success { border-left-color: #107c10; }
+.w10-win .w10-infobar-warning { border-left-color: #ca5010; background: #fdf6f0; }
+.w10-win .w10-infobar-error { border-left-color: #e81123; background: #fdf0f1; }
+.w10-win .w10-avatar2 { border-radius: 999px; background: var(--w10-accent, #0078d7); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; overflow: hidden; flex-shrink: 0; }
+.w10-win .w10-avatar2 img { width: 100%; height: 100%; object-fit: cover; }
+.w10-win .w10-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; font-size: 11px; border-radius: 999px; background: var(--w10-accent, #0078d7); color: #fff; }
+.w10-win .w10-badge-neutral { background: #605e5c; }
+.w10-win .w10-badge-alert { background: #e81123; }
+.w10-win .w10-searchbox { display: flex; align-items: center; gap: 6px; border: 1px solid #767676; background: #fff; height: 30px; padding: 0 4px 0 8px; box-sizing: border-box; }
+.w10-win .w10-searchbox:focus-within { border: 2px solid var(--w10-accent, #0078d7); padding: 0 3px 0 7px; }
+.w10-win .w10-searchbox-icon { display: inline-flex; color: #605e5c; }
+.w10-win .w10-searchbox-icon svg { display: block; }
+.w10-win .w10-searchbox-input { flex: 1; border: none; outline: none; font-family: inherit; font-size: 12px; background: transparent; color: inherit; min-width: 0; }
+.w10-win .w10-searchbox-clear { border: none; background: transparent; cursor: pointer; color: inherit; padding: 2px 6px; }
+.w10-win .w10-searchbox-clear:hover { background: #e5e5e5; }
+.w10-win .w10-number { display: flex; align-items: stretch; max-width: 220px; }
+.w10-win .w10-number-input { text-align: right; }
+.w10-win .w10-number-btn { width: 32px; border: 1px solid #767676; background: #f3f3f3; cursor: pointer; font-size: 14px; }
+.w10-win .w10-number-btn:hover { background: #e5e5e5; }
+.w10-win .w10-passwrap { display: flex; gap: 0; }
+.w10-win .w10-passwrap .w10-textbox { flex: 1; }
+.w10-win .w10-passbtn { width: 34px; border: 1px solid #767676; border-left: none; background: #f3f3f3; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: #605e5c; }
+.w10-win .w10-passbtn:hover { background: #e5e5e5; }
+.w10-win .w10-tile { --w10-tile: var(--w10-accent, #0078d7); position: relative; border: 1px solid transparent; background: var(--w10-tile); color: #fff; cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: inherit; padding: 0 0 18px; box-sizing: border-box; }
+.w10-win .w10-tile:hover { filter: brightness(1.12); outline: 2px solid rgba(255,255,255,.6); outline-offset: -2px; }
+.w10-win .w10-tile-small { width: 64px; height: 64px; }
+.w10-win .w10-tile-medium { width: 104px; height: 104px; }
+.w10-win .w10-tile-wide { width: 216px; height: 104px; }
+.w10-win .w10-tile-large { width: 216px; height: 216px; }
+.w10-win .w10-tile-icon { line-height: 0; }
+.w10-win .w10-tile-icon svg { width: 30px; height: 30px; }
+.w10-win .w10-tile-label { position: absolute; left: 8px; bottom: 6px; right: 8px; font-size: 11px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w10-win .w10-tile.w10-selected { outline: 2px solid #fff; outline-offset: -4px; }
+.w10-win .w10-commandbar { display: flex; gap: 2px; border-bottom: 1px solid #e1e1e1; padding-bottom: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.w10-win .w10-command { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; background: transparent; color: inherit; font-family: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer; }
+.w10-win .w10-command:hover:not(:disabled) { background: #e5f1fb; border-color: #cce8ff; }
+.w10-win .w10-command:disabled { opacity: .45; cursor: default; }
+.w10-win .w10-command-icon { display: inline-flex; color: var(--w10-accent, #0078d7); }
+.w10-win .w10-command-icon svg { display: block; }
+.w10-win .w10-tree-row { display: flex; align-items: center; }
+.w10-win .w10-tree-toggle { width: 24px; height: 24px; border: none; background: transparent; color: #605e5c; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.w10-win .w10-tree-toggle svg { width: 14px; height: 14px; }
+.w10-win .w10-tree-spacer { visibility: hidden; }
+.w10-win .w10-tree-label { flex: 1; display: flex; align-items: center; gap: 8px; border: none; background: transparent; color: inherit; font-family: inherit; font-size: 12px; text-align: left; padding: 6px 8px; cursor: pointer; margin-left: calc(var(--w10-depth, 0) * 16px); }
+.w10-win .w10-tree-label:hover { background: #f3f3f3; }
+.w10-win .w10-tree-label.w10-selected { background: #e5f1fb; box-shadow: inset 2px 0 0 var(--w10-accent, #0078d7); }
+.w10-win .w10-tree-icon { display: inline-flex; color: var(--w10-accent, #0078d7); }
+.w10-win .w10-tree-kids { display: flex; flex-direction: column; }
+.w10-win .w10-tablewrap { overflow-x: auto; margin: 8px 0; border: 1px solid #e1e1e1; }
+.w10-win .w10-table { display: flex; flex-direction: column; min-width: 100%; }
+.w10-win .w10-trow { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(90px, 1fr); border: none; background: transparent; color: inherit; font-family: inherit; font-size: 12px; text-align: left; padding: 0; }
+.w10-win button.w10-trow { cursor: pointer; }
+.w10-win button.w10-trow:hover { background: #f3f3f3; }
+.w10-win .w10-trow.w10-selected { background: #e5f1fb; box-shadow: inset 2px 0 0 var(--w10-accent, #0078d7); }
+.w10-win .w10-tcell { padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid #f0f0f0; }
+.w10-win .w10-thead { background: #f9f9f9; }
+.w10-win .w10-thead-cell { font-weight: 600; color: #605e5c; }
+.w10-win .w10-rating { display: flex; gap: 2px; }
+.w10-win .w10-star { border: none; background: transparent; color: #767676; font-size: 20px; cursor: pointer; padding: 0 2px; }
+.w10-win .w10-star.w10-on { color: var(--w10-accent, #0078d7); }
+.w10-win .w10-star:disabled { cursor: default; }
+.w10-win .w10-breadcrumb { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.w10-win .w10-crumb-sep { color: #767676; }
+.w10-win .w10-crumb-link { border: none; background: transparent; color: var(--w10-accent, #0078d7); font-family: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+.w10-win .w10-crumb-link:hover { text-decoration: underline; }
+.w10-win .w10-crumb-current { color: #605e5c; font-size: 12px; }
+.w10-flyout { position: fixed; z-index: 99997; min-width: 220px; max-width: 320px; background: #fff; color: #000; border: 1px solid #767676; box-shadow: 0 4px 16px rgba(0,0,0,.4); padding: 10px 12px; font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; }
+.w10-flyout.w10-dark { background: #2b2b2b; color: #fff; border-color: #444; }
+.w10-win .w10-segmented { display: inline-flex; border: 1px solid #767676; }
+.w10-win .w10-seg { border: none; border-right: 1px solid #767676; background: transparent; color: inherit; font-family: inherit; font-size: 12px; padding: 7px 14px; cursor: pointer; }
+.w10-win .w10-seg:last-child { border-right: none; }
+.w10-win .w10-seg:hover { background: #f3f3f3; }
+.w10-win .w10-seg.w10-on { background: var(--w10-accent, #0078d7); color: #fff; }
+.w10-win .w10-colorgrid { display: flex; flex-wrap: wrap; gap: 6px; }
+.w10-win .w10-swatch { width: 32px; height: 32px; border: 1px solid #767676; cursor: pointer; padding: 0; }
+.w10-win .w10-swatch.w10-on { outline: 2px solid var(--w10-accent, #0078d7); outline-offset: 2px; }
+.w10-win .w10-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 28px 16px; }
+.w10-win .w10-empty-icon { color: var(--w10-accent, #0078d7); }
+.w10-win .w10-empty-icon svg { width: 40px; height: 40px; }
+.w10-win .w10-empty-title { font-size: 14px; font-weight: 600; }
+.w10-win .w10-spinner-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.w10-win .w10-spinner { border: 3px solid #e1e1e1; border-top-color: var(--w10-accent, #0078d7); border-radius: 999px; animation: w10-spin 0.9s linear infinite; }
+@keyframes w10-spin { to { transform: rotate(360deg); } }
+.w10-win .w10-link { border: none; background: transparent; color: var(--w10-accent, #0078d7); font-family: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+.w10-win .w10-link:hover { text-decoration: underline; }
+.w10-win .w10-icon { display: inline-flex; align-items: center; justify-content: center; }
+.w10-win .w10-icon svg { display: block; }
+.w10-tip { position: relative; }
+.w10-tip:hover::after { content: attr(data-w10-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); background: #202020; color: #fff; font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; padding: 4px 8px; white-space: nowrap; z-index: 99999; pointer-events: none; border: 1px solid #444; }
+
+/* Dark theme for batch 2 */
+.w10-win.w10-dark .w10-expander { border-color: #333; }
+.w10-win.w10-dark .w10-expander-head:hover { background: #2d2d2d; }
+.w10-win.w10-dark .w10-expander-body { border-top-color: #333; }
+.w10-win.w10-dark .w10-pivot-tab { color: #a19f9d; }
+.w10-win.w10-dark .w10-pivot-tab:hover, .w10-win.w10-dark .w10-pivot-tab.w10-active { color: #fff; }
+.w10-win.w10-dark .w10-infobar { background: #2d2d2d; }
+.w10-win.w10-dark .w10-infobar-msg { color: #a19f9d; }
+.w10-win.w10-dark .w10-infobar-warning { background: #33261a; }
+.w10-win.w10-dark .w10-infobar-error { background: #3a1f22; }
+.w10-win.w10-dark .w10-infobar-close:hover { background: #3a3a3a; }
+.w10-win.w10-dark .w10-searchbox { background: #2b2b2b; border-color: #8a8a8a; }
+.w10-win.w10-dark .w10-searchbox-clear:hover { background: #3a3a3a; }
+.w10-win.w10-dark .w10-number-btn, .w10-win.w10-dark .w10-passbtn { background: #333; border-color: #8a8a8a; color: #fff; }
+.w10-win.w10-dark .w10-commandbar { border-bottom-color: #333; }
+.w10-win.w10-dark .w10-command:hover:not(:disabled) { background: #3a3a3a; border-color: #555; }
+.w10-win.w10-dark .w10-tree-label:hover { background: #2d2d2d; }
+.w10-win.w10-dark .w10-tree-label.w10-selected { background: rgba(0,120,215,.25); }
+.w10-win.w10-dark button.w10-trow:hover { background: #2d2d2d; }
+.w10-win.w10-dark .w10-trow.w10-selected { background: rgba(0,120,215,.25); }
+.w10-win.w10-dark .w10-tcell { border-bottom-color: #333; }
+.w10-win.w10-dark .w10-thead { background: #191919; }
+.w10-win.w10-dark .w10-seg:hover { background: #2d2d2d; }
+.w10-win.w10-dark .w10-crumb-current { color: #a19f9d; }
+.w10-win.w10-dark .w10-spinner { border-color: #444; border-top-color: var(--w10-accent, #0078d7); }

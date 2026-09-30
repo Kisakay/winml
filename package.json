@@ -49,11 +49,12 @@
 		"build:js": "esbuild src/index.ts --bundle --minify --format=esm --outfile=dist/index.js && esbuild src/index.ts --bundle --minify --format=cjs --outfile=dist/index.cjs",
 		"build:dts": "tsc -p tsconfig.json",
 		"build:css": "mkdir -p dist && cp styles/win10-shell.css dist/win10-shell.css",
-		"build:demo": "mkdir -p demo/dist && esbuild demo/main.ts --bundle --minify --format=iife --outfile=demo/dist/demo.js",
+		"build:demo": "mkdir -p demo/dist && esbuild demo/main.ts --bundle --minify --format=iife --outfile=demo/dist/demo.js && cp styles/win10-shell.css demo/dist/win10-shell.css",
 		"build:pages": "npm run build && node ./scripts/build-pages.mjs",
 		"build": "npm run clean && npm run build:js && npm run build:dts && npm run build:css && npm run build:demo",
 		"prepublishOnly": "npm run build",
-		"demo": "npx http-server ./demo -p 8080 -c-1"
+		"dev": "node ./scripts/dev.mjs",
+		"demo": "npm run build:demo && npx http-server ./demo -p 8080 -c-1"
 	},
 	"devDependencies": {
 		"esbuild": "^0.27.2",
