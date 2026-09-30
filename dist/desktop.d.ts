@@ -1,6 +1,8 @@
 import { Win10Application, type Win10ApplicationOptions } from "./application.js";
+import { Win10DesktopIcons, type DesktopIconDef } from "./desktopicons.js";
 import { Win10StartMenu } from "./startmenu.js";
 import { Win10Taskbar } from "./taskbar.js";
+import { Win10Wallpaper, type WallpaperOptions } from "./wallpaper.js";
 import { Win10Window, type Win10Geometry, type Win10Theme, type Win10WindowOptions } from "./window.js";
 export declare const DEFAULT_ACCENT = "#0078d7";
 export interface DesktopStartOptions {
@@ -21,6 +23,10 @@ export interface DesktopOptions {
     start?: DesktopStartOptions;
     /** Set to false to hide the clock. */
     clock?: DesktopClockOptions | false;
+    /** Initial wallpaper (default hero). `false` mounts no wallpaper layer. */
+    wallpaper?: WallpaperOptions | false;
+    /** Desktop shortcuts created at startup (see setDesktopIcons). */
+    desktopIcons?: DesktopIconDef[];
 }
 export interface DesktopAppOptions extends Omit<Win10WindowOptions, "onClose" | "onMinimize" | "id">, Pick<Win10ApplicationOptions, "pinned" | "pinnable" | "pinTitle" | "unpinTitle" | "onPinChange"> {
     id: string;
@@ -59,6 +65,8 @@ export interface DesktopApp {
 }
 export interface Win10Desktop {
     readonly taskbar: Win10Taskbar;
+    readonly wallpaper: Win10Wallpaper | null;
+    readonly desktopIcons: Win10DesktopIcons;
     readonly theme: Win10Theme;
     readonly accent: string;
     createApp: (opts: DesktopAppOptions) => DesktopApp;
@@ -67,6 +75,12 @@ export interface Win10Desktop {
     setAccent: (accent: string) => void;
     setStatus: (html: string | null) => void;
     setStartOpen: (open: boolean) => void;
+    setWallpaper: (opts: WallpaperOptions) => void;
+    clearWallpaper: () => void;
+    setDesktopIcons: (icons: DesktopIconDef[]) => void;
+    addDesktopIcon: (icon: DesktopIconDef) => void;
+    removeDesktopIcon: (id: string) => void;
+    clearDesktopIcons: () => void;
     /**
      * Attach a standalone Start menu to the shell: it is synced with the
      * current theme/accent immediately, then follows setTheme/setAccent.

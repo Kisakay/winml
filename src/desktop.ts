@@ -9,8 +9,10 @@
 // Pure DOM, zero dependencies, framework-agnostic (React, Vue, vanilla...).
 
 import { Win10Application, type Win10ApplicationOptions } from "./application.js";
+import { Win10DesktopIcons, type DesktopIconDef } from "./desktopicons.js";
 import { Win10StartMenu } from "./startmenu.js";
 import { Win10Taskbar } from "./taskbar.js";
+import { Win10Wallpaper, type WallpaperOptions } from "./wallpaper.js";
 import { Win10Window, type Win10Geometry, type Win10Theme, type Win10WindowOptions } from "./window.js";
 
 export const DEFAULT_ACCENT = "#0078d7";
@@ -35,6 +37,10 @@ export interface DesktopOptions {
 	start?: DesktopStartOptions;
 	/** Set to false to hide the clock. */
 	clock?: DesktopClockOptions | false;
+	/** Initial wallpaper (default hero). `false` mounts no wallpaper layer. */
+	wallpaper?: WallpaperOptions | false;
+	/** Desktop shortcuts created at startup (see setDesktopIcons). */
+	desktopIcons?: DesktopIconDef[];
 }
 
 export interface DesktopAppOptions
@@ -78,6 +84,8 @@ export interface DesktopApp {
 
 export interface Win10Desktop {
 	readonly taskbar: Win10Taskbar;
+	readonly wallpaper: Win10Wallpaper | null;
+	readonly desktopIcons: Win10DesktopIcons;
 	readonly theme: Win10Theme;
 	readonly accent: string;
 	createApp: (opts: DesktopAppOptions) => DesktopApp;
@@ -86,6 +94,12 @@ export interface Win10Desktop {
 	setAccent: (accent: string) => void;
 	setStatus: (html: string | null) => void;
 	setStartOpen: (open: boolean) => void;
+	setWallpaper: (opts: WallpaperOptions) => void;
+	clearWallpaper: () => void;
+	setDesktopIcons: (icons: DesktopIconDef[]) => void;
+	addDesktopIcon: (icon: DesktopIconDef) => void;
+	removeDesktopIcon: (id: string) => void;
+	clearDesktopIcons: () => void;
 	/**
 	 * Attach a standalone Start menu to the shell: it is synced with the
 	 * current theme/accent immediately, then follows setTheme/setAccent.
@@ -119,6 +133,10 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 		if (opts.clock?.onClick) taskbar.onClockClick(opts.clock.onClick);
 		taskbar.startClock(undefined, opts.clock?.intervalMs ?? 10000);
 	}
+	const wallpaper = opts.wallpaper === false ? null : new Win10Wallpaper(mount);
+	if (wallpaper && opts.wallpaper) wallpaper.set(opts.wallpaper);
+	const desktopIcons = new Win10DesktopIcons({ mount });
+	if (opts.desktopIcons) desktopIcons.setIcons(opts.desktopIcons);
 	taskbar.mount(mount);
 	taskbar.setAccent(accent);
 
@@ -135,6 +153,8 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 
 	const desktop: Win10Desktop = {
 		taskbar,
+		wallpaper,
+		desktopIcons,
 		get theme() {
 			return theme;
 		},
@@ -211,6 +231,30 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 			taskbar.setStartOpen(open);
 		},
 
+		setWallpaper: (opts: WallpaperOptions) => {
+			wallpaper?.set(opts);
+		},
+
+		clearWallpaper: () => {
+			wallpaper?.clear();
+		},
+
+		setDesktopIcons: (icons: DesktopIconDef[]) => {
+			desktopIcons.setIcons(icons);
+		},
+
+		addDesktopIcon: (icon: DesktopIconDef) => {
+			desktopIcons.addIcon(icon);
+		},
+
+		removeDesktopIcon: (id: string) => {
+			desktopIcons.removeIcon(id);
+		},
+
+		clearDesktopIcons: () => {
+			desktopIcons.clear();
+		},
+
 		attachStartMenu: (menu: Win10StartMenu) => {
 			startMenu = menu;
 			menu.setTheme(theme);
@@ -221,6 +265,8 @@ export function createDesktop(opts: DesktopOptions = {}): Win10Desktop {
 			if (destroyed) return;
 			destroyed = true;
 			for (const app of [...apps.values()]) app.destroy();
+			desktopIcons.destroy();
+			wallpaper?.destroy();
 			taskbar.destroy();
 		},
 	};

@@ -1627,3 +1627,148 @@ hr.w10-md-hr {
 .w10-win.w10-dark .w10-seg:hover { background: #2d2d2d; }
 .w10-win.w10-dark .w10-crumb-current { color: #a19f9d; }
 .w10-win.w10-dark .w10-spinner { border-color: #444; border-top-color: var(--w10-accent, #0078d7); }
+
+/* ================= Wallpaper =================
+   Fixed layer behind windows/icons/taskbar, pointer-transparent. */
+.w10-wallpaper {
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	background-color: #06121f;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+/* ================= Desktop icons =================
+   Shortcut grid above the wallpaper, below windows. The layer itself is
+   pointer-transparent so window dragging and context menus keep working
+   around the icons. */
+.w10-dicons {
+	position: fixed;
+	top: 12px;
+	left: 12px;
+	bottom: 52px;
+	z-index: 9000;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	align-content: flex-start;
+	gap: 4px;
+	pointer-events: none;
+	font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.w10-dicon {
+	pointer-events: auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	width: 88px;
+	padding: 8px 4px 6px;
+	background: transparent;
+	border: 1px solid transparent;
+	color: #fff;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.w10-dicon:hover {
+	background: rgba(255, 255, 255, 0.12);
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+.w10-dicon:focus-visible {
+	outline: 1px dotted #fff;
+	outline-offset: -1px;
+}
+
+.w10-dicon.w10-selected {
+	background: rgba(0, 120, 215, 0.45);
+	border-color: rgba(255, 255, 255, 0.6);
+	outline: 1px dotted rgba(255, 255, 255, 0.8);
+}
+
+.w10-dicon-glyph {
+	display: inline-flex;
+	line-height: 0;
+	color: #fff;
+	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+.w10-dicon-glyph svg {
+	width: 32px;
+	height: 32px;
+	display: block;
+}
+
+.w10-dicon-label {
+	font-size: 12px;
+	line-height: 1.25;
+	text-align: center;
+	color: #fff;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+	word-break: break-word;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+/* ================= Notepad =================
+   Full-bleed editor: add `w10-body-flush` to the window body, then mount
+   a `.w10-notepad` root inside. */
+.w10-win .w10-body-flush {
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.w10-win .w10-notepad {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.w10-win .w10-notepad-bar {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+	padding: 8px 12px;
+	border-bottom: 1px solid #e1e1e1;
+	flex-shrink: 0;
+}
+
+.w10-win .w10-notepad-area {
+	flex: 1;
+	min-height: 200px;
+	border: none;
+	outline: none;
+	resize: none;
+	font-family: Consolas, "Courier New", monospace;
+	font-size: 13px;
+	line-height: 1.5;
+	padding: 10px 12px;
+	background: #fff;
+	color: #000;
+}
+
+.w10-win .w10-notepad-status {
+	display: flex;
+	gap: 14px;
+	flex-wrap: wrap;
+	padding: 4px 12px;
+	border-top: 1px solid #e1e1e1;
+	font-size: 11px;
+	color: #605e5c;
+	flex-shrink: 0;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.w10-win.w10-dark .w10-notepad-bar { border-bottom-color: #2c2c2c; }
+.w10-win.w10-dark .w10-notepad-area { background: #1b1b1b; color: #fff; }
+.w10-win.w10-dark .w10-notepad-status { border-top-color: #2c2c2c; color: #a19f9d; }

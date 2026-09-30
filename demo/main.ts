@@ -32,6 +32,7 @@ import {
 	ICON_MORE,
 	ICON_MUSIC,
 	ICON_NEW_FOLDER,
+	ICON_NOTEPAD,
 	ICON_PASTE,
 	ICON_PAUSE,
 	ICON_PHONE,
@@ -63,8 +64,11 @@ import {
 	MSGBOX_INFO,
 	MSGBOX_QUESTION,
 	MSGBOX_WARNING,
+	SYS_ICONS,
 	confirmWin10,
 	createDesktop,
+	DEFAULT_WALLPAPER,
+	DARK_WALLPAPER,
 	Win10StartMenu,
 	renderMarkdown,
 	showWin10Menu,
@@ -85,6 +89,7 @@ import {
 	w10Slider,
 	w10Switch,
 	w10TextareaRow,
+	w10TextRow,
 	w10Toggle,
 	showW10Flyout,
 	w10Avatar,
@@ -108,9 +113,15 @@ import {
 	w10Tree,
 	w10WithTooltip,
 	type DesktopApp,
+	type WallpaperFit,
+	type WallpaperOptions,
 } from "../src/index.js";
 
 let startMenu: Win10StartMenu;
+
+const DEMO_WALLPAPER_URL =
+	"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwallpapercave.com%2Fwp%2Fwp13280341.png&f=1&nofb=1&ipt=11bd6c3fa935fe308356976f5a642d42f98a27ec0bcddbc08aed2eed7ffa0c69&ipo=images";
+const DEMO_WALLPAPER: WallpaperOptions = { ...DEFAULT_WALLPAPER, image: DEMO_WALLPAPER_URL, fit: "cover" };
 
 const desktop = createDesktop({
 	start: {
@@ -122,6 +133,7 @@ const desktop = createDesktop({
 		onClick: () => calendarApp.focus(),
 	},
 	accent: "#0078d7",
+	wallpaper: { ...DEMO_WALLPAPER },
 });
 
 startMenu = new Win10StartMenu({
@@ -140,6 +152,7 @@ startMenu = new Win10StartMenu({
 				settingsApp.minimize();
 				gallery.minimize();
 				calendarApp.minimize();
+				notepad.minimize();
 			},
 		},
 	},
@@ -193,6 +206,54 @@ settingsApp.body.appendChild(
 		calHandle?.setTheme(v ? "dark" : "light");
 	}),
 );
+settingsApp.body.appendChild(w10GroupTitle("Wallpaper"));
+{
+	const presets: { label: string; opts: WallpaperOptions }[] = [
+		{ label: "Hero", opts: { ...DEMO_WALLPAPER } },
+		{ label: "Midnight", opts: { ...DARK_WALLPAPER } },
+		{ label: "Solid", opts: { image: null, gradient: null, color: "#0078d7" } },
+	];
+	let wallUrl = DEMO_WALLPAPER_URL;
+	let wallFit: WallpaperFit = "cover";
+	let urlField: HTMLInputElement | null = null;
+	const wallRow = document.createElement("div");
+	wallRow.className = "w10-toolbar";
+	wallRow.style.flexWrap = "wrap";
+	for (const preset of presets) {
+		wallRow.appendChild(
+			w10Button(preset.label, () => {
+				desktop.setWallpaper(preset.opts);
+				wallUrl = preset.opts.image ?? "";
+				if (urlField) urlField.value = wallUrl;
+			}),
+		);
+	}
+	settingsApp.body.appendChild(wallRow);
+	const urlRow = w10TextRow("Image URL", "Custom wallpaper (empty = none).", () => wallUrl, (v) => {
+		wallUrl = v.trim();
+		desktop.setWallpaper({ image: wallUrl || null, fit: wallFit });
+	});
+	urlField = urlRow.querySelector("input");
+	settingsApp.body.appendChild(urlRow);
+	settingsApp.body.appendChild(
+		w10ComboRow(
+			"Fit",
+			"How the image fills the screen.",
+			[
+				{ value: "cover", label: "Fill" },
+				{ value: "contain", label: "Fit" },
+				{ value: "center", label: "Center" },
+				{ value: "tile", label: "Tile" },
+				{ value: "stretch", label: "Stretch" },
+			],
+			() => wallFit,
+			(v) => {
+				wallFit = v as WallpaperFit;
+				desktop.setWallpaper({ fit: wallFit });
+			},
+		),
+	);
+}
 settingsApp.body.appendChild(w10GroupTitle("Content"));
 settingsApp.body.appendChild(
 	w10ComboRow(
@@ -572,7 +633,118 @@ const widgetsApp = desktop.createApp({
 		wall2.appendChild(cell);
 	}
 	widgetsApp.body.appendChild(wall2);
+	widgetsApp.body.appendChild(w10GroupTitle("System icons (Fluent 20px, currentColor)"));
+	const sysWall = document.createElement("div");
+	sysWall.style.display = "flex";
+	sysWall.style.flexWrap = "wrap";
+	sysWall.style.gap = "6px";
+	for (const [key, svg] of Object.entries(SYS_ICONS) as [string, string][]) {
+		const cell = document.createElement("span");
+		cell.title = key;
+		cell.style.cssText = "display:inline-flex;padding:6px;border:1px solid #e1e1e1;color:var(--w10-accent,#0078d7)";
+		cell.innerHTML = svg;
+		sysWall.appendChild(cell);
+	}
+	widgetsApp.body.appendChild(sysWall);
+	widgetsApp.body.appendChild(w10Desc("Base: Microsoft Fluent UI System Icons (MIT). B00merang was checked but ships PNGs, not SVGs."));
 }
+
+// ---- App 7 : Notepad (notepad.exe) ----
+const NOTEPAD_KEY = "win10ml.notepad";
+function loadNote(): string {
+	try {
+		return localStorage.getItem(NOTEPAD_KEY) ?? "";
+	} catch {
+		return "";
+	}
+}
+function persistNote(value: string): void {
+	try {
+		localStorage.setItem(NOTEPAD_KEY, value);
+	} catch {
+		// Private mode / file:// — keep it in memory only.
+	}
+}
+const notepad = desktop.createApp({
+	id: "notepad",
+	label: "Notepad",
+	appTitle: "Notepad — notepad.exe",
+	appIconHTML: ICON_NOTEPAD,
+	titleHTML: `Notepad <span class="w10-credit">notepad.exe</span>`,
+	width: 520,
+	height: 480,
+	build: (body) => {
+		body.classList.add("w10-body-flush");
+		const root = document.createElement("div");
+		root.className = "w10-notepad";
+		const bar = document.createElement("div");
+		bar.className = "w10-notepad-bar";
+		const area = document.createElement("textarea");
+		area.className = "w10-notepad-area";
+		area.spellcheck = false;
+		area.placeholder = "Type here… (auto-saved locally)";
+		area.value = loadNote();
+		const status = document.createElement("div");
+		status.className = "w10-notepad-status";
+		const paint = () => {
+			const text = area.value;
+			const head = text.slice(0, area.selectionStart ?? text.length);
+			const lines = head.split("\n");
+			const last = lines[lines.length - 1] ?? "";
+			const words = text.split(/\s+/).filter(Boolean).length;
+			status.textContent = `Ln ${lines.length}, Col ${last.length + 1} · ${text.length} chars · ${words} words`;
+		};
+		area.addEventListener("input", () => {
+			persistNote(area.value);
+			paint();
+		});
+		area.addEventListener("keyup", paint);
+		area.addEventListener("click", paint);
+		bar.appendChild(
+			w10Button("New", () => {
+				if (!area.value) {
+					area.focus();
+					return;
+				}
+				confirmWin10("Notepad", "Clear the current note?", { yes: "Clear", no: "Cancel" }, { theme: dark ? "dark" : "light" }).then((yes) => {
+					if (!yes) return;
+					area.value = "";
+					persistNote("");
+					paint();
+					area.focus();
+				});
+			}),
+		);
+		bar.appendChild(
+			w10Button("Save .txt", () => {
+				const blob = new Blob([area.value], { type: "text/plain;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = "notepad.txt";
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+				setTimeout(() => URL.revokeObjectURL(url), 1000);
+			}),
+		);
+		root.appendChild(bar);
+		root.appendChild(area);
+		root.appendChild(status);
+		body.appendChild(root);
+		paint();
+	},
+});
+
+// ---- Desktop icons (double-click to open) ----
+desktop.setDesktopIcons([
+	{ id: "about", label: "About", iconHTML: WIN10_LOGO, onOpen: () => about.focus() },
+	{ id: "notepad", label: "Notepad", iconHTML: ICON_NOTEPAD, onOpen: () => notepad.focus() },
+	{ id: "settings", label: "Settings", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() },
+	{ id: "components", label: "Components", iconHTML: ICON_SETTINGS, onOpen: () => gallery.focus() },
+	{ id: "calendar", label: "Calendar", iconHTML: ICON_CALENDAR, onOpen: () => calendarApp.focus() },
+	{ id: "widgets", label: "Widgets", iconHTML: ICON_GRID, onOpen: () => widgetsApp.focus() },
+]);
 
 	startMenu.registerApp({ id: "about", label: "About", iconHTML: ICON_HELP, onOpen: () => about.focus() });
 	startMenu.registerApp({ id: "settings", label: "Settings demo", iconHTML: DOWNLOAD_ICON, onOpen: () => settingsApp.focus() });
@@ -580,6 +752,7 @@ const widgetsApp = desktop.createApp({
 	startMenu.registerApp({ id: "calendar", label: "Calendar", iconHTML: ICON_CALENDAR, onOpen: () => calendarApp.focus() });
 	startMenu.registerApp({ id: "nav", label: "Navigation", iconHTML: ICON_HOME, onOpen: () => navApp.focus() });
 	startMenu.registerApp({ id: "widgets", label: "Widgets", iconHTML: ICON_GRID, onOpen: () => widgetsApp.focus() });
+	startMenu.registerApp({ id: "notepad", label: "Notepad", iconHTML: ICON_NOTEPAD, onOpen: () => notepad.focus() });
 
 	console.log("[demo] accent API: desktop.setAccent('#e81123'), desktop.setTheme('dark')");
 
@@ -599,6 +772,9 @@ function openDemoMenu(x: number, y: number): void {
 			const openGallery = w10MenuItem("Open Components", "the new gallery");
 			openGallery.onclick = () => gallery.focus();
 			menu.appendChild(openGallery);
+			const openNotepad = w10MenuItem("Open Notepad", "notepad.exe");
+			openNotepad.onclick = () => notepad.focus();
+			menu.appendChild(openNotepad);
 			menu.appendChild(w10Separator());
 			const red = w10MenuItem("Red accent", "broadcast to shell");
 			red.onclick = () => desktop.setAccent("#e81123");

@@ -165,11 +165,39 @@ export declare const ICON_PRINTER_ALT: string;
 export declare const ICON_FAVORITE: string;
 export declare const ICON_DOCUMENT: string;
 /**
- * Named registry of every icon in the pack (old + extended).
+ * Named registry of every icon in the pack (old + extended + system set).
  * Use with {@link getWin10Icon} / {@link w10Icon} for dynamic lookup
  * (Start menu search, settings pages, file lists...).
  */
 export declare const ICONS: {
+    readonly sysDesktop: string;
+    readonly sysLaptop: string;
+    readonly sysTablet: string;
+    readonly sysPhone: string;
+    readonly sysTrash: string;
+    readonly sysSave: string;
+    readonly sysFile: string;
+    readonly sysCamera: string;
+    readonly sysPhoto: string;
+    readonly sysSettings: string;
+    readonly sysCloud: string;
+    readonly sysInfo: string;
+    readonly sysNetwork: string;
+    readonly sysKeyboard: string;
+    readonly sysUser: string;
+    readonly sysVideo: string;
+    readonly sysShield: string;
+    readonly sysFingerprint: string;
+    readonly sysServer: string;
+    readonly sysPower: string;
+    readonly sysSearch: string;
+    readonly sysDatabase: string;
+    readonly sysGames: string;
+    readonly sysPrinter: string;
+    readonly sysFolder: string;
+    readonly sysWarning: string;
+    readonly sysMic: string;
+    readonly sysBluetooth: string;
     readonly back: string;
     readonly forward: string;
     readonly chevronUp: string;

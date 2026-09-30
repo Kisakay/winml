@@ -45,8 +45,10 @@ Builds the whole environment: taskbar + window manager + theme broadcast.
 | `start`     | `{ iconHTML, title?, onClick }`      | Start button (Windows logo). Omit for no Start button      |
 | `clock`     | `{ onClick?, intervalMs? } \| false` | Taskbar clock. `false` hides it                            |
 | `taskbarId` | `string`                             | DOM id of the taskbar (default `"w10-taskbar"`)            |
+| `wallpaper` | `WallpaperOptions \| false`          | Initial wallpaper (default hero). `false` = no layer       |
+| `desktopIcons` | `DesktopIconDef[]`                | Desktop shortcuts created at startup                       |
 
-Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to every window + attached Start menu), `setStatus(html | null)` (taskbar status text), `setStartOpen`, `attachStartMenu(menu)` (sync a standalone Start menu with the shell theme/accent), `destroy`.
+Desktop methods: `createApp`, `getApp`, `setTheme`, `setAccent` (broadcast to every window + attached Start menu), `setStatus(html | null)` (taskbar status text), `setStartOpen`, `attachStartMenu(menu)` (sync a standalone Start menu with the shell theme/accent), `setWallpaper(opts)` / `clearWallpaper()`, `setDesktopIcons(icons)` / `addDesktopIcon(icon)` / `removeDesktopIcon(id)` / `clearDesktopIcons()`, `destroy`. Exposes `wallpaper` (`Win10Wallpaper | null`) and `desktopIcons` (`Win10DesktopIcons`).
 
 ### `desktop.createApp(opts): DesktopApp`
 
@@ -90,6 +92,8 @@ app.launch(); // show + focus + running (no duplicate if already open)
 
 - `Win10Window` — standalone window (drag/resize/min/max/close, `addNav`, `applyGeometry`, `setTheme`, `setAccent`, localized `chrome` labels).
 - `Win10Taskbar` — standalone taskbar (`addStartButton`, `addApp`, `setAppState`, `setStatus`, `startClock`). Owns the Win10 display policy: pinned apps stay visible when closed, minimized windows keep their button, unpinned + idle apps hide; right-click offers Pin/Unpin (`pinned`, `pinnable`, `pinTitle`/`unpinTitle`, `onPinChange`, `setPinned`/`isPinned`, `minimized` in `setAppState`).
+- `Win10Wallpaper` — fullscreen wallpaper layer (color + gradient + image, `cover`/`contain`/`center`/`tile`/`stretch` fit). `new Win10Wallpaper(mount)`, `set(opts)`, `clear()`, `destroy()`; presets `DEFAULT_WALLPAPER`, `DARK_WALLPAPER`.
+- `Win10DesktopIcons` — desktop shortcuts (click select, double-click/Enter open). `new Win10DesktopIcons({ mount, icons })`, `addIcon` / `removeIcon` / `setIcons` / `clear` / `select` / `destroy`.
 - `Win10StartMenu` — classic Start menu flyout: live search, app list + accent tiles, configurable footer (user/settings/power). Apps register dynamically:
 
 ```ts
@@ -116,6 +120,12 @@ startButton.onclick = () => menu.toggle();
 ### Official icon pack
 
 Win10 logo, ~120 Segoe MDL2 glyphs (back/forward, chevrons, arrows, check/plus/minus, play/pause/stop/skip/repeat/shuffle, volume/mute, music/video/photo/camera/mic, search/zoom, refresh/update, save, trash, edit, copy/paste/cut, folder/file (+open/new/add), home, star/favorite, heart, like/dislike, user/contact/group, lock/key, calendar, clock/history, mail/phone/comment, share/send/link/attach, shield, power, wifi/ethernet/bluetooth, battery, settings, globe/location/map/compass, info/warn/error/success, bell, pin/unpin, menu/more/list/grid/dashboard/taskview, sort/filter, print/scan, cloud/upload, calculator/notepad/terminal/code/bug, gift/trophy/gamepad/cart, keyboard/mouse/monitor/laptop/tablet/tv/headphones, moon/sun, cortana…), caption glyphs, `INFO_ICON`, and the 32px system icons `MSGBOX_INFO/WARNING/ERROR/QUESTION`. All inline SVG, `currentColor` where it makes sense (accent-tinted), zero network. Dynamic lookup via `ICONS` / `getWin10Icon(name)` / `w10Icon(name)` (`Win10IconName`).
+
+### System icons (`SYS_*`)
+
+28 desktop-style glyphs (This PC, laptop, tablet, phone, recycle bin, save, file, camera, photo, settings, cloud, info, network, keyboard, user, video, shield, fingerprint/Windows Hello, server, power, search, database, gamepad, printer, folder, warning, mic, bluetooth) based on **Microsoft Fluent UI System Icons 20px Regular** ([MIT](https://github.com/microsoft/fluentui-system-icons), © Microsoft Corporation), inlined as `currentColor` SVGs. Same dynamic lookup via `SYS_ICONS` (merged into `ICONS`, e.g. `getWin10Icon("sysTrash")`).
+
+Note: the B00merang Windows-10 theme was evaluated as a source but ships PNG rasters (its `*-symbolic.svg` files are base64-PNG wrappers) and carries no license file while being derived from Microsoft artwork, so it was not inlined.
 
 ## Stylesheet
 

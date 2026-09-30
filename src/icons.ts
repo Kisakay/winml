@@ -1,3 +1,5 @@
+import { SYS_ICONS } from "./sysicons.js";
+
 /** Official Windows 8/10/11 logo path (Microsoft / Pentagram, Wikimedia "Windows logo - 2012.svg"). */
 export const WIN10_LOGO = `<svg width="19" height="19" viewBox="0 0 88 88" fill="currentColor" aria-hidden="true"><path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L.028 75.48.026 45.7zm4.326-39.025L87.314 0v41.527l-47.318.376zm47.329 39.349l-.011 41.34-47.318-6.678-.066-34.739z"/></svg>`;
 
@@ -229,7 +231,7 @@ export const ICON_FAVORITE = MDL2(`<path d="M10 3.2l2 4.8 5.2.2-4 3.2 1.3 5.1-4.
 export const ICON_DOCUMENT = MDL2(`<path d="M5.5 2.8h5.5l4 4v10.4H5.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.5 10h5M7.5 12.5h5M7.5 15h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/>`);
 
 /**
- * Named registry of every icon in the pack (old + extended).
+ * Named registry of every icon in the pack (old + extended + system set).
  * Use with {@link getWin10Icon} / {@link w10Icon} for dynamic lookup
  * (Start menu search, settings pages, file lists...).
  */
@@ -264,6 +266,7 @@ export const ICONS = {
 	calculator: ICON_CALCULATOR, notepad: ICON_NOTEPAD, terminal: ICON_TERMINAL, code: ICON_CODE, bug: ICON_BUG,
 	gift: ICON_GIFT, trophy: ICON_TROPHY, gamepad: ICON_GAMEPAD, cart: ICON_CART,
 	moon: ICON_MOON, sun: ICON_SUN,
+	...SYS_ICONS,
 } as const;
 
 export type Win10IconName = keyof typeof ICONS;
